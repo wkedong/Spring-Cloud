@@ -7,3 +7,5 @@ server:
 spring:
   application:
     name: service-consumer    #当前服务ID
+  zipkin:
+   base-url: http://localhost:6040 #zipkin服务地址
