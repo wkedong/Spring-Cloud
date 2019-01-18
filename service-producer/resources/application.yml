@@ -1,0 +1,17 @@
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
+server:
+  port: 6070  #当前服务端口
+spring:
+  application:
+    name: service-producer    #当前服务ID
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/springclouddemo?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.jdbc.Driver
+mybatis:
+  type-aliases-package: com.wkedong.springcloud.serviceproducer.entity
+#mybatis config

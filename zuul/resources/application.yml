@@ -1,0 +1,15 @@
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
+server:
+  port: 6050
+spring:
+  application:
+    name: zuul
+zuul:
+  routes:
+    api:
+      path: /impl/**
+      service-id: service-producer
+  

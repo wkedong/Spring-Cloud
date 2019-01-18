@@ -1,0 +1,9 @@
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
+server:
+  port: 7020  #当前服务端口
+spring:
+  application:
+    name: service-consumer-feign    #当前服务ID
