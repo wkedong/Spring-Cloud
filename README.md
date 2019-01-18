@@ -168,7 +168,7 @@ eureka:
 
 此时我们启动应用并访问 http://localhost:6060/ 将会看到下面的页面，由于我们没有注册其他的服务，所以没有发现任何服务。
 
-![](https://raw.githubusercontent.com/wkedong/upload/master/%E5%9B%BE%E7%89%871.png?token=AXLpXQnpNYnwSqeNW83VhEwcNXQLV9Vsks5cQXSAwA%3D%3D)
+![](https://raw.githubusercontent.com/wkedong/upload/master/Pic/eureka-service.png?token=AXLpXUVy9n-TUbkVPUbWda3piQmJW3-tks5cQYhWwA%3D%3D)
 
 # 3.服务提供方(service-producer)
 > 有了服务注册中心，下面来新建一个服务的提供方即==service-producer==，并向eureka中注册自己
@@ -444,7 +444,7 @@ public class UserEntity {
 }
 ```
 启动该工程后，再次访问：http://localhost:6060/ 可以如下图内容，我们定义的服务被成功注册了。
-![](https://raw.githubusercontent.com/wkedong/upload/master/%E5%9B%BE%E7%89%871.png?token=AXLpXQnpNYnwSqeNW83VhEwcNXQLV9Vsks5cQXSAwA%3D%3D)
+![](https://raw.githubusercontent.com/wkedong/upload/master/Pic/service-producer.png?token=AXLpXYEsRUqSoz8lA9b1AttWScYhWdFuks5cQYh7wA%3D%3D)
 访问 http://localhost:6070/test 得到以下返回值：
 
 ```
