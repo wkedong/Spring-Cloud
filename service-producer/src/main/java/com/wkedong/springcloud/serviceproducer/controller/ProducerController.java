@@ -19,7 +19,7 @@ public class ProducerController {
     ProducerService producerService;
 
     @RequestMapping(value = "/provide", method = RequestMethod.POST)
-    public String producer(@RequestBody JSONObject jsonRequest) throws InterruptedException {
+    public String producer(@RequestBody JSONObject jsonRequest) {
         return producerService.producer(jsonRequest);
     }
 

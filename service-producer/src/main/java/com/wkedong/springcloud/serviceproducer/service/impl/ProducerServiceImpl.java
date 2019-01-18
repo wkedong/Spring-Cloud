@@ -34,8 +34,7 @@ public class ProducerServiceImpl implements ProducerService {
     private int serverPort = 0;
 
     @Override
-    public String producer(@RequestBody JSONObject jsonRequest) throws InterruptedException {
-        Thread.sleep(5000L);
+    public String producer(@RequestBody JSONObject jsonRequest) {
         UserEntity userEntity = userMapper.getOne(1);
         this.logger.info("/provide, instanceId:{}, host:{}", eurekaInstanceConfig.getInstanceId(), eurekaInstanceConfig.getHostName(false));
         return "Hello, Spring Cloud! My port is " + String.valueOf(serverPort) + " Name is " + jsonRequest.toString()

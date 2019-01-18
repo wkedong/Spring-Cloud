@@ -8,7 +8,7 @@ import com.alibaba.fastjson.JSONObject;
  * 2019/1/15
  */
 public interface ProducerService {
-    String producer(JSONObject jsonRequest) throws InterruptedException;
+    String producer(JSONObject jsonRequest);
 
     String test();
 }
