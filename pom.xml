@@ -22,23 +22,33 @@
     </properties>
 
     <modules>
+        <!-- Eureka注册中心-->
         <module>eureka</module>
+        <!-- 配置中心-->
         <module>config</module>
+        <!-- 智能网关路由-->
         <module>zuul</module>
+        <!-- Zipkin服务追踪-->
         <module>zipkin</module>
+        <!--服务生产者-->
         <module>service-producer</module>
+        <!-- 服务消费者-->
         <module>service-consumer</module>
+        <!-- Feign服务消费者-->
         <module>service-consumer-feign</module>
+        <!-- 带有负载均衡的消费者-->
         <module>service-consumer-ribbon</module>
+        <!-- 带有熔断机制的消费者-->
         <module>service-consumer-ribbon-hystrix</module>
     </modules>
+
 
     <dependencyManagement>
         <dependencies>
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>Dalston.SR1</version>
+                <version>Edgware.SR5</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
