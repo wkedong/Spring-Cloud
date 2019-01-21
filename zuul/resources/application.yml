@@ -1,5 +1,7 @@
 eureka:
   client:
+    healthcheck:
+      enabled: true #健康检查开启
     service-url:
       defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
 server:
@@ -9,7 +11,4 @@ spring:
     name: zuul
 zuul:
   routes:
-    api:
-      path: /impl/**
-      service-id: service-producer
   

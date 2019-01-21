@@ -1,5 +1,7 @@
 eureka:
   client:
+    healthcheck:
+      enabled: true #健康检查开启
     service-url:
       defaultZone: http://localhost:6060/eureka/
 server:
