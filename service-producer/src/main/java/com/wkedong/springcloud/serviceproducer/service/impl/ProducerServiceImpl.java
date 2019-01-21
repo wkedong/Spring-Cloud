@@ -1,6 +1,5 @@
 package com.wkedong.springcloud.serviceproducer.service.impl;
 
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.netflix.appinfo.EurekaInstanceConfig;
 import com.wkedong.springcloud.serviceproducer.entity.UserEntity;
@@ -12,8 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import java.util.List;
 
 /**
  * @author wkedong
@@ -30,6 +27,7 @@ public class ProducerServiceImpl implements ProducerService {
     @Autowired
     private EurekaInstanceConfig eurekaInstanceConfig;
 
+
     @Value("${server.port}")
     private int serverPort = 0;
 
@@ -43,12 +41,12 @@ public class ProducerServiceImpl implements ProducerService {
 
     @Override
     public String test() {
-        List<UserEntity> users = userMapper.getAll();
+//        List<UserEntity> users = userMapper.getAll();
         UserEntity userEntity = userMapper.getOne(1);
         //2、使用JSONArray
-        String usersStr = JSONArray.toJSONString(users);
+//        String usersStr = JSONArray.toJSONString(users);
         //1、使用JSONObject
         String userEntityStr = JSONObject.toJSONString(userEntity);
-        return usersStr + "          " + userEntityStr;
+        return userEntityStr;
     }
 }
