@@ -7,6 +7,13 @@ eureka:
 server:
   port: 7030  #当前服务端口
 spring:
+  ## 从配置中心读取文件
+  cloud:
+    config:
+      uri: http://localhost:6010/
+      label: master
+      profile: dev
+      name: service-consumer-ribbon
   application:
     name: service-consumer-ribbon    #当前服务ID
   zipkin:
