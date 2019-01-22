@@ -9,6 +9,6 @@ server:
 spring:
   application:
     name: zuul
-zuul:
-  routes:
+  #zuul:
+  #  routes:
   

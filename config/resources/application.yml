@@ -9,8 +9,23 @@ server:
 spring:
   application:
     name: config
+  #  cloud:
+  #    config:
+  #      server:
+  #        git:
+  #          uri: https://github.com/wkedong/Spring-Cloud-Config.git
+  profiles:
+    active: jdbc
   cloud:
     config:
       server:
-        git:
-          uri: https://github.com/wkedong/Spring-Cloud-Config.git
+        jdbc:
+          sql: SELECT `KEY`, `VALUE` from PROPERTIES where APPLICATION=? and PROFILE=? and LABEL=?
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/spring-cloud-config?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.jdbc.Driver
+flyway:
+  locations: /schema
+  baseline-on-migrate: true
