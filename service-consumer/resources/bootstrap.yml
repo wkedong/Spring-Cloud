@@ -7,7 +7,15 @@ eureka:
 server:
   port: 7010  #当前服务端口
 spring:
+  ## 从配置中心读取文件
+  cloud:
+    config:
+      uri: http://localhost:6010/
+      label: master
+      profile: dev
+      name: service-consumer
   application:
     name: service-consumer    #当前服务ID
   zipkin:
-   base-url: http://localhost:6040 #zipkin服务地址
+    base-url: http://localhost:6040 #zipkin服务地址
+

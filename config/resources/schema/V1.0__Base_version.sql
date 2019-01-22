@@ -10,12 +10,3 @@ CREATE TABLE `properties` (
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
-
-INSERT INTO properties
-VALUES (1, 'name', 'test-dev-master', 'service-producer', 'dev', 'master');
-INSERT INTO properties
-VALUES (2, 'name', 'test-pro-master', 'service-producer', 'pro', 'master');
-INSERT INTO properties
-VALUES (3, 'name', 'test-dev-develop', 'service-producer', 'dev', 'develop');
-INSERT INTO properties
-VALUES (4, 'name', 'test-pro-develop', 'service-producer', 'pro', 'develop');
