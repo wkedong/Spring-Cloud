@@ -22,9 +22,10 @@ spring:
         jdbc:
           sql: SELECT `KEY`, `VALUE` from PROPERTIES where APPLICATION=? and PROFILE=? and LABEL=?
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/config-server-db?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8
+    url: jdbc:mysql://127.0.0.1:3306/spring-cloud-config?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8
     username: root
     password: 123456
     driver-class-name: com.mysql.jdbc.Driver
 flyway:
   locations: /schema
+  baseline-on-migrate: true
