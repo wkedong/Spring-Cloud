@@ -1,0 +1,18 @@
+eureka:
+  client:
+    healthcheck:
+      enabled: true #健康检查开启
+    serviceUrl:
+      defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
+server:
+  port: 6050  #当前服务端口
+spring:
+  ## 从配置中心读取文件
+  cloud:
+    config:
+      uri: http://localhost:6010/
+      label: master
+      profile: dev
+      name: zuul
+  application:
+    name: zuul    #当前服务ID
