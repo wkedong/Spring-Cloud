@@ -5,7 +5,8 @@ eureka:
     serviceUrl:
       defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
 server:
-  port: 6070  #当前服务端口
+  port:   #当前服务端口
+---
 spring:
   ## 从配置中心读取文件
   cloud:
