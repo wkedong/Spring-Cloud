@@ -2,14 +2,10 @@ package com.wkedong.springcloud.serviceproducer.controller;
 
 import com.alibaba.fastjson.JSONObject;
 import com.wkedong.springcloud.serviceproducer.service.ProducerService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * @author wkedong
@@ -19,27 +15,41 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class ProducerController {
 
-    private Logger logger = LoggerFactory.getLogger(ProducerController.class);
-
-    @Value("${name}")
-    private String name;
-
     @Autowired
     ProducerService producerService;
 
-    @RequestMapping(value = "/provide", method = RequestMethod.POST)
-    public String producer(@RequestBody JSONObject jsonRequest) {
-        return producerService.producer(jsonRequest);
+    @GetMapping(value = "/testGet")
+    public String testGet() {
+        return producerService.testGet();
     }
 
-    @RequestMapping(value = "/test", method = RequestMethod.GET)
-    public String test() {
-        return producerService.test();
+    @PostMapping(value = "/testPost")
+    public String testPost(@RequestBody JSONObject jsonRequest) {
+        return producerService.testPost(jsonRequest);
     }
 
-    @RequestMapping(value = "/getConfig", method = RequestMethod.GET)
-    public String getConfig() {
-        this.logger.error("/getConfig" + name);
-        return name;
+    @PostMapping(value = "/testFile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public String handleFileUpload(@RequestPart(value = "file") MultipartFile file) {
+        return file.getOriginalFilename();
+    }
+
+    @GetMapping(value = "/testConfig")
+    public String testConfig() {
+        return producerService.testConfig();
+    }
+
+    @GetMapping(value = "/testRibbon")
+    public String testRibbon() {
+        return producerService.testRibbon();
+    }
+
+    @GetMapping(value = "/testFeign")
+    public String testFeign() {
+        return producerService.testFeign();
+    }
+
+    @GetMapping(value = "/testHystrix")
+    public String testHystrix() {
+        return producerService.testHystrix();
     }
 }

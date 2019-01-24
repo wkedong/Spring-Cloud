@@ -18,3 +18,5 @@ spring:
     name: service-consumer-ribbon-hystrix    #当前服务ID
   zipkin:
     base-url: http://localhost:6040 #zipkin服务地址
+  sleuth:
+    enabled: true #服务追踪开启
