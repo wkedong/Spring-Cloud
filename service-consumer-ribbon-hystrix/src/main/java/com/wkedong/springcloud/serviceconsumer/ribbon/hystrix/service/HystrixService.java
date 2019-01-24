@@ -5,6 +5,6 @@ package com.wkedong.springcloud.serviceconsumer.ribbon.hystrix.service;
  * <p>
  * 2019/1/15
  */
-public interface ConsumerService {
-    String consumer(String name);
+public interface HystrixService {
+    String testHystrix();
 }

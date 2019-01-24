@@ -8,7 +8,15 @@ import com.alibaba.fastjson.JSONObject;
  * 2019/1/15
  */
 public interface ProducerService {
-    String producer(JSONObject jsonRequest);
+    String testGet();
 
-    String test();
+    String testPost(JSONObject jsonRequest);
+
+    String testConfig();
+
+    String testRibbon();
+
+    String testFeign();
+
+    String testHystrix();
 }
