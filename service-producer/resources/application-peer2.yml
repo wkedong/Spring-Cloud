@@ -1,0 +1,5 @@
+spring:
+  profiles:
+    active: peer2
+server:
+  port: 6080

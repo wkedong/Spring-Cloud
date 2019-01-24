@@ -5,7 +5,7 @@ eureka:
     serviceUrl:
       defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
 server:
-  port: 7030  #当前服务端口
+  port: 6050  #当前服务端口
 spring:
   ## 从配置中心读取文件
   cloud:
@@ -13,10 +13,13 @@ spring:
       uri: http://localhost:6010/
       label: master
       profile: dev
-      name: service-consumer-ribbon
+      name: zuul
   application:
-    name: service-consumer-ribbon    #当前服务ID
-  zipkin:
-    base-url: http://localhost:6040 #zipkin服务地址
-  sleuth:
-    enabled: true #服务追踪开启
+    name: zuul    #当前服务ID
+zuul:
+  routes:
+    service-producer:
+      path: /service-producer/**
+      serviceId: service-producer
+
+
