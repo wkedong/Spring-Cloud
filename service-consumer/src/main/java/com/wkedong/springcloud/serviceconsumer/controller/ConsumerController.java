@@ -1,6 +1,7 @@
 package com.wkedong.springcloud.serviceconsumer.controller;
 
 import com.alibaba.fastjson.JSONObject;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpEntity;
@@ -24,17 +25,20 @@ import java.io.File;
  */
 @RestController
 public class ConsumerController {
+    private final Logger logger = Logger.getLogger(getClass());
 
     @Autowired
     private RestTemplate restTemplate;
 
     @GetMapping(value = "/testGet")
     public String testGet() {
+        logger.info("===<call testGet>===");
         return restTemplate.getForObject("http://service-producer/testGet", String.class);
     }
 
     @PostMapping(value = "/testPost")
     public String testPost(@RequestParam("name") String name) {
+        logger.info("===<call testPost>===");
         JSONObject json = new JSONObject();
         json.put("name", name);
         return restTemplate.postForObject("http://service-producer/testPost", json, String.class);
@@ -42,6 +46,7 @@ public class ConsumerController {
 
     @PostMapping(value = "/testFile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String testFile(@RequestParam("file") MultipartFile file) {
+        logger.info("===<call testFile>===");
         File path = null;
         if (file != null) {
             try {

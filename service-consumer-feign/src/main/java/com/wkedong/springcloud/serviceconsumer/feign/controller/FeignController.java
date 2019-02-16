@@ -4,6 +4,7 @@ import com.wkedong.springcloud.serviceconsumer.feign.service.FeignService;
 import org.apache.commons.fileupload.disk.DiskFileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.io.IOUtils;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,16 +27,20 @@ import java.io.OutputStream;
 @RestController
 public class FeignController {
 
+    private final Logger logger = Logger.getLogger(getClass());
+
     @Autowired
     FeignService feignService;
 
     @GetMapping("/testFeign")
     public String testFeign() {
+        logger.info("===<call testFeign>===");
         return feignService.testFeign();
     }
 
     @PostMapping(value = "/testFeignFile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public String testFeignFile(@RequestParam("file") MultipartFile file) {
+        logger.info("===<call testFeignFile>===");
         File path = null;
         if (file != null) {
             try {

@@ -2,6 +2,7 @@ package com.wkedong.springcloud.serviceconsumer.ribbon.hystrix.service.impl;
 
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import com.wkedong.springcloud.serviceconsumer.ribbon.hystrix.service.HystrixService;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -13,6 +14,8 @@ import org.springframework.web.client.RestTemplate;
  */
 @Service
 public class HystrixServiceImpl implements HystrixService {
+
+    private final Logger logger = Logger.getLogger(getClass());
 
     @Autowired
     RestTemplate restTemplate;
@@ -27,6 +30,7 @@ public class HystrixServiceImpl implements HystrixService {
     }
 
     public String fallback() {
+        logger.info("===<call testHystrix fail fallback>===");
         return "service-producer /testHystrix is error";
     }
 }
