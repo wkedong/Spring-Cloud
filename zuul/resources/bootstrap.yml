@@ -16,10 +16,5 @@ spring:
       name: zuul
   application:
     name: zuul    #当前服务ID
-zuul:
-  routes:
-    service-producer:
-      path: /service-producer/**
-      serviceId: service-producer
 
 

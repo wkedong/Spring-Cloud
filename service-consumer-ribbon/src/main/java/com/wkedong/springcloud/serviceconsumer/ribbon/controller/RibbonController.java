@@ -1,5 +1,6 @@
 package com.wkedong.springcloud.serviceconsumer.ribbon.controller;
 
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,12 +13,14 @@ import org.springframework.web.client.RestTemplate;
  */
 @RestController
 public class RibbonController {
+    private final Logger logger = Logger.getLogger(getClass());
 
     @Autowired
     private RestTemplate restTemplate;
 
     @GetMapping(value = "/testRibbon")
     public String testRibbon() {
+        logger.info("===<call testRibbon>===");
 
         //执行http请求Producer服务的provide映射地址，返回的数据为字符串类型
         //PRODUCER：提供者(Producer服务)的注册服务ID

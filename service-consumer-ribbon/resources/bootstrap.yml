@@ -20,3 +20,5 @@ spring:
     base-url: http://localhost:6040 #zipkin服务地址
   sleuth:
     enabled: true #服务追踪开启
+    sampler:
+      percentage: 1 #zipkin收集率
