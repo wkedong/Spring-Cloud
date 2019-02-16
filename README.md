@@ -14,3 +14,4 @@
 - [Spring Cloud（三）服务消费](https://wkedong.github.io/2019/01/30/Spring-Cloud%EF%BC%88%E4%B8%89%EF%BC%89%E6%9C%8D%E5%8A%A1%E6%B6%88%E8%B4%B9/)
 - [Spring Cloud（四）服务容错保护](https://wkedong.github.io/2019/01/30/Spring-Cloud%EF%BC%88%E5%9B%9B%EF%BC%89%E6%9C%8D%E5%8A%A1%E5%AE%B9%E9%94%99%E4%BF%9D%E6%8A%A4/)
 - [Spring-Cloud（五）服务网关](https://wkedong.github.io/2019/01/30/Spring-Cloud%EF%BC%88%E4%BA%94%EF%BC%89%E6%9C%8D%E5%8A%A1%E7%BD%91%E5%85%B3/)
+- [Spring-Cloud（六）服务追踪](https://wkedong.github.io/2019/02/13/Spring-Cloud%EF%BC%88%E5%85%AD%EF%BC%89%E6%9C%8D%E5%8A%A1%E8%BF%BD%E8%B8%AA/)
