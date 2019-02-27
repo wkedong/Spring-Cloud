@@ -11,7 +11,7 @@ spring:
   cloud:
     config:
       uri: http://localhost:6010/
-      label: master
+      label: develop
       profile: dev
       name: service-consumer-ribbon
   application:

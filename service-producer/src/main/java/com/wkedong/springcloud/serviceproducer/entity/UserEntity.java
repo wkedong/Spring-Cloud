@@ -1,6 +1,7 @@
 package com.wkedong.springcloud.serviceproducer.entity;
 
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Component;
 
 /**
@@ -12,9 +13,19 @@ import org.springframework.stereotype.Component;
 @Component//加入到Spring容器
 public class UserEntity {
 
+    private String id;
     private String name;
+    @DateTimeFormat(style = "yyyy-MM-dd")
     private String birthday;
     private String address;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 
     public String getName() {
         return name;
