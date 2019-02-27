@@ -2,8 +2,6 @@ package com.wkedong.springcloud.serviceproducer.service.impl;
 
 import com.alibaba.fastjson.JSONObject;
 import com.netflix.appinfo.EurekaInstanceConfig;
-import com.wkedong.springcloud.serviceproducer.entity.UserEntity;
-import com.wkedong.springcloud.serviceproducer.mapper.UserMapper;
 import com.wkedong.springcloud.serviceproducer.service.ProducerService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,9 +20,6 @@ public class ProducerServiceImpl implements ProducerService {
     private Logger logger = LoggerFactory.getLogger(ProducerServiceImpl.class);
 
     @Autowired
-    private UserMapper userMapper;
-
-    @Autowired
     private EurekaInstanceConfig eurekaInstanceConfig;
 
 
@@ -39,14 +34,7 @@ public class ProducerServiceImpl implements ProducerService {
     @Override
     public String testGet() {
         this.logger.info("/testGet, instanceId:{}, host:{}", eurekaInstanceConfig.getInstanceId(), eurekaInstanceConfig.getHostName(false));
-
-        //1、使用JSONObject
-        UserEntity userEntity = userMapper.getOne(1);
-        String userEntityStr = JSONObject.toJSONString(userEntity);
-        //2、使用JSONArray
-        //List<UserEntity> users = userMapper.getAll();
-        //String usersStr = JSONArray.toJSONString(users);
-        setReturnMessage(" Get info By Mybatis is " + userEntityStr);
+        setReturnMessage(" Get info is testGet Success");
         return returnMessage;
     }
 

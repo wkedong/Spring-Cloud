@@ -27,8 +27,12 @@ import java.io.File;
 public class ConsumerController {
     private final Logger logger = Logger.getLogger(getClass());
 
+    private final RestTemplate restTemplate;
+
     @Autowired
-    private RestTemplate restTemplate;
+    public ConsumerController(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @GetMapping(value = "/testGet")
     public String testGet() {

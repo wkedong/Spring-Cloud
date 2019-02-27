@@ -22,11 +22,11 @@ public interface UserMapper {
     UserEntity getOne(int id);
 
     @Insert("INSERT INTO user(name,birthday,address) VALUES(#{name}, #{birthday}, #{address})")
-    void insert(UserEntity user);
+    boolean insert(UserEntity user);
 
     @Update("UPDATE user SET name=#{name},birthday=#{birthday},address=#{address} WHERE id =#{id}")
-    void update(UserEntity user);
+    boolean update(UserEntity user);
 
     @Delete("DELETE FROM user WHERE id =#{id}")
-    void delete(int id);
+    boolean delete(int id);
 }
