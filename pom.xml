@@ -13,7 +13,8 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>1.5.2.RELEASE</version>
+        <version>2.7.18</version>
+        <relativePath/>
     </parent>
 
     <properties>
@@ -26,10 +27,12 @@
         <module>eureka</module>
         <!-- 配置中心-->
         <module>config</module>
-        <!-- 智能网关路由-->
+        <!-- 智能网关路由（Zuul 已退役，内部改用 Spring Cloud Gateway 实现；目录名沿用历史名）-->
         <module>zuul</module>
-        <!-- Zipkin服务追踪-->
-        <module>zipkin</module>
+        <!-- Zipkin服务追踪：Zipkin 2.14+ 不再以 Spring Boot 库形式发行，
+             本分支改为 docker-compose 启动官方独立 Zipkin（见根目录 docker-compose.yml 与 docs/07），
+             原 zipkin 自建模块已删除（库形态已废弃）
+        <module>zipkin</module>-->
         <!--服务生产者-->
         <module>service-producer</module>
         <!-- 服务消费者-->
@@ -48,7 +51,7 @@
             <dependency>
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
-                <version>Edgware.SR5</version>
+                <version>2021.0.9</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -68,7 +71,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.5.1</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>

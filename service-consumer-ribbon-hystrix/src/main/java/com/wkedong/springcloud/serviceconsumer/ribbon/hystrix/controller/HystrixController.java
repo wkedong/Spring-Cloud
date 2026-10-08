@@ -1,7 +1,8 @@
 package com.wkedong.springcloud.serviceconsumer.ribbon.hystrix.controller;
 
 import com.wkedong.springcloud.serviceconsumer.ribbon.hystrix.service.HystrixService;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,7 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 public class HystrixController {
-    private final Logger logger = Logger.getLogger(getClass());
+    // log4j 1.x → slf4j
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Autowired
     HystrixService hystrixService;

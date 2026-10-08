@@ -2,7 +2,8 @@ package com.wkedong.springcloud.serviceproducer.controller;
 
 import com.alibaba.fastjson.JSONObject;
 import com.wkedong.springcloud.serviceproducer.service.ProducerService;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -16,7 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 public class ProducerController {
 
-    private final Logger logger = Logger.getLogger(getClass());
+    // log4j 1.x 已 EOL，Boot 2.x 默认日志门面/实现为 slf4j + Logback
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Autowired
     ProducerService producerService;

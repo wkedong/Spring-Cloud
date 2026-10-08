@@ -4,8 +4,9 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.wkedong.springcloud.serviceproducer.entity.UserEntity;
 import com.wkedong.springcloud.serviceproducer.service.OperateUserService;
-import org.apache.commons.lang.math.NumberUtils;
-import org.apache.log4j.Logger;
+import org.apache.commons.lang3.math.NumberUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class OperateUserController {
 
-    private final Logger logger = Logger.getLogger(getClass());
+    // log4j 1.x → slf4j；commons-lang 2.x → commons-lang3（见 pom）
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     @Autowired
     OperateUserService operateUserService;

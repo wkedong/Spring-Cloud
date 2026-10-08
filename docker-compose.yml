@@ -1,0 +1,32 @@
+# 教学演示本地基础设施：MySQL（配置中心/业务库初始化）+ 官方 Zipkin
+# 启动：docker compose up -d
+# 说明：zipkin 默认内存存储，重启即清空；MySQL 持久化见 docs/07-服务追踪.md
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: spring-cloud-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./sql/InitSQL.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - mysql-data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: spring-cloud-zipkin
+    ports:
+      - "9411:9411"
+    # 如需 MySQL 持久化，取消以下注释（建表脚本见 sql/InitSQL.sql 头部说明）
+    # environment:
+    #   STORAGE_TYPE: mysql
+    #   MYSQL_HOST: mysql
+    #   MYSQL_TCP_PORT: 3306
+    #   MYSQL_USER: root
+    #   MYSQL_PASS: 123456
+    #   MYSQL_DB: spring_cloud_zipkin
+
+volumes:
+  mysql-data:

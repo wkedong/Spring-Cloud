@@ -1,0 +1,46 @@
+eureka:
+  client:
+    healthcheck:
+      enabled: true #健康检查开启
+    serviceUrl:
+      defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
+server:
+  port: 7040  #当前服务端口
+spring:
+  ## 从配置中心读取文件
+  cloud:
+    config:
+      uri: http://localhost:6010/
+      label: develop
+      profile: dev
+      name: service-consumer-ribbon-hystrix
+  application:
+    name: service-consumer-ribbon-hystrix    #当前服务ID
+  zipkin:
+    base-url: http://localhost:9411 #zipkin服务地址（官方独立发行版默认端口，旧版自建模块为 6040）
+  sleuth:
+    enabled: true #服务追踪开启
+    sampler:
+      probability: 1.0 #zipkin收集率（旧键 percentage 已更名为 probability）
+# Boot 1.5 的 management.security.enabled 已废除；2.x 需显式放开端点
+# 放开 actuator 后可通过 /actuator/circuitbreakers、/actuator/circuitbreakerevents 观察熔断状态
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+# Resilience4j 熔断器配置（替代原 HystrixCommand 的超时/熔断语义）
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        # 默认 1s；producer 的 /testHystrix 故意睡 5s，超时即触发 fallback
+        timeout-duration: 3s
+        cancel-running-future: true
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10 #滑动窗口统计 10 次调用
+        failure-rate-threshold: 50 #失败率阈值 50% 打开熔断
+        wait-duration-in-open-state: 10s #熔断打开后等待 10s 进入半开

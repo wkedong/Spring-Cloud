@@ -1,0 +1,24 @@
+# Spring Cloud Gateway 路由配置（替代原 Zuul 的 zuul.routes.*）
+spring:
+  cloud:
+    gateway:
+      # 按注册中心服务 id 自动生成路由：/service-producer/**、/service-consumer/** 等
+      # （等价于 Zuul 开启 Ribbon 路由的默认行为）
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      # 显式路由示例：通过网关以 /api/producer/** 前缀访问 producer 服务
+      routes:
+        - id: service-producer
+          uri: lb://service-producer #lb:// 表示从注册中心负载均衡取实例
+          predicates:
+            - Path=/api/producer/**
+          filters:
+            - StripPrefix=2 #剥掉前两段(/api/producer)再转发：/api/producer/testGet → producer 的 /testGet
+        - id: service-consumer
+          uri: lb://service-consumer
+          predicates:
+            - Path=/api/consumer/**
+          filters:
+            - StripPrefix=2

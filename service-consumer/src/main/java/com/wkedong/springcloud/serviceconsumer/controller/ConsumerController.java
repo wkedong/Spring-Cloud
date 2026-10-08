@@ -1,7 +1,8 @@
 package com.wkedong.springcloud.serviceconsumer.controller;
 
 import com.alibaba.fastjson.JSONObject;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpEntity;
@@ -25,7 +26,8 @@ import java.io.File;
  */
 @RestController
 public class ConsumerController {
-    private final Logger logger = Logger.getLogger(getClass());
+    // log4j 1.x → slf4j
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final RestTemplate restTemplate;
 
@@ -54,12 +56,13 @@ public class ConsumerController {
         File path = null;
         if (file != null) {
             try {
-                String filePath = "D:\\tempFile";
+                // 原 demo 硬编码 Windows 路径 D:\tempFile，改为跨平台临时目录
+                String filePath = System.getProperty("java.io.tmpdir") + File.separator + "tempFile";
                 path = new File(filePath); //判断文件路径下的文件夹是否存在，不存在则创建
                 if (!path.exists()) {
                     path.mkdirs();
                 }
-                File savedFile = new File(filePath + "\\" + file.getOriginalFilename());
+                File savedFile = new File(filePath + File.separator + file.getOriginalFilename());
                 boolean isCreateSuccess = savedFile.createNewFile(); // 是否创建文件成功
                 if (isCreateSuccess) {
                     //将文件写入
@@ -74,7 +77,8 @@ public class ConsumerController {
                 HttpEntity<MultiValueMap<String, Object>> files = new HttpEntity<>(param, headers);
                 return restTemplate.postForObject("http://service-producer/testFile", files, String.class);
             } catch (Exception e) {
-                e.printStackTrace();
+                // e.printStackTrace() 改为落日志
+                logger.error("multipart 文件临时保存失败", e);
             } finally {
                 if (path != null) {
                     path.delete();

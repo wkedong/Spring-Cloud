@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  * @author wkedong
@@ -26,7 +25,8 @@ public class ProducerServiceImpl implements ProducerService {
     @Value("${server.port}")
     private int serverPort = 0;
 
-    @Value("${name}")
+    // ${name} 来自配置中心（PROPERTIES 表）；给默认值便于脱离配置中心也能完成上下文加载测试
+    @Value("${name:unknown}")
     private String configName = "";
 
     private String returnMessage = "";
@@ -39,7 +39,7 @@ public class ProducerServiceImpl implements ProducerService {
     }
 
     @Override
-    public String testPost(@RequestBody JSONObject jsonRequest) {
+    public String testPost(JSONObject jsonRequest) {
         this.logger.info("/testPost, instanceId:{}, host:{}", eurekaInstanceConfig.getInstanceId(), eurekaInstanceConfig.getHostName(false));
         setReturnMessage(" PostParam is " + jsonRequest.toString());
         return returnMessage;
