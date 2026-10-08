@@ -1,47 +1,41 @@
 package com.wkedong.springcloud.serviceconsumer.feign.service;
 
-import org.apache.commons.fileupload.disk.DiskFileItem;
-import org.apache.commons.fileupload.disk.DiskFileItemFactory;
-import org.apache.commons.io.IOUtils;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
-
-@RunWith(SpringJUnit4ClassRunner.class)
+/**
+ * Feign multipart 透传集成测试。
+ * <p>
+ * 2021.0.x 迁移说明：Spring 5 已移除 CommonsMultipartFile，
+ * 构造测试文件改用 spring-test 的 MockMultipartFile；
+ * 原 demo 硬编码的 Windows 路径（D:\1.jpg）改为内存构造。
+ * <p>
+ * 该用例依赖完整运行环境（eureka/config/service-producer 在线），
+ * 默认禁用，需要联调时移除 @Disabled 手工执行。
+ */
+@Disabled("需要完整运行环境：eureka(6060)/config(6010)/service-producer(6070) 全部在线")
 @SpringBootTest
-public class FeignServiceTest {
+class FeignServiceTest {
+
+    private final Logger logger = LoggerFactory.getLogger(FeignServiceTest.class);
 
     @Autowired
     FeignService feignService;
-    private Logger logger = LoggerFactory.getLogger(FeignServiceTest.class);
 
     @Test
-    public void testFeignFile() {
-        File file = new File("D:\\1.jpg");
-        DiskFileItem fileItem = (DiskFileItem) new DiskFileItemFactory().createItem("file",
-                MediaType.MULTIPART_FORM_DATA_VALUE, true, file.getName());
-
-        try (InputStream input = new FileInputStream(file); OutputStream os = fileItem.getOutputStream()) {
-            IOUtils.copy(input, os);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Invalid file: " + e, e);
-        }
-
-        MultipartFile multi = new CommonsMultipartFile(fileItem);
-        String string = feignService.testFeignFile(multi);
-        logger.info(string);
+    void testFeignFile() {
+        MultipartFile file = new MockMultipartFile(
+                "file", "1.jpg", "image/jpeg",
+                "feign multipart test content".getBytes(StandardCharsets.UTF_8));
+        String result = feignService.testFeignFile(file);
+        logger.info(result);
     }
 }

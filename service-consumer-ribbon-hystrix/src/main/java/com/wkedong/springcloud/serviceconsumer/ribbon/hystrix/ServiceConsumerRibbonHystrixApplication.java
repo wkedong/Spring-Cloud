@@ -1,21 +1,27 @@
 package com.wkedong.springcloud.serviceconsumer.ribbon.hystrix;
 
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
-import org.springframework.cloud.netflix.hystrix.EnableHystrix;
-import org.springframework.cloud.netflix.hystrix.dashboard.EnableHystrixDashboard;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 /**
+ * 带熔断机制的消费者（模块保留 ribbon-hystrix 历史名，对应原博客「服务容错保护」一篇）
+ * <p>
+ * 2021.0.x 迁移说明：Hystrix 进入维护态并已从 Spring Cloud 移除，
+ * 熔断改由 Spring Cloud CircuitBreaker 抽象 + Resilience4j 实现承担：
+ * 1. @EnableHystrix / @EnableHystrixDashboard 无需保留（CircuitBreakerFactory 自动装配）；
+ * 2. @HystrixCommand(fallbackMethod) 改为 CircuitBreakerFactory.run(supplier, fallback)，
+ *    见 HystrixServiceImpl；
+ * 3. Hystrix Dashboard 由 actuator 的 /actuator/circuitbreakers、
+ *    /actuator/circuitbreakerevents 端点替代观察。
+ *
  * @author wkedong
  * 2019/1/5
  * Ribbon
  */
-@EnableHystrixDashboard
-@EnableHystrix
 @SpringBootApplication
 @EnableDiscoveryClient
 public class ServiceConsumerRibbonHystrixApplication {
@@ -27,6 +33,7 @@ public class ServiceConsumerRibbonHystrixApplication {
     }
 
     public static void main(String[] args) {
-        new SpringApplicationBuilder(ServiceConsumerRibbonHystrixApplication.class).web(true).run(args);
+        // web(true) 已废弃，Boot 2.x 默认即 SERVLET 应用，直接 run 即可
+        SpringApplication.run(ServiceConsumerRibbonHystrixApplication.class, args);
     }
 }

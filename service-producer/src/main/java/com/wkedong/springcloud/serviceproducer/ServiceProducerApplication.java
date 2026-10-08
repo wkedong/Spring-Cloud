@@ -1,8 +1,8 @@
 package com.wkedong.springcloud.serviceproducer;
 
 import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 /**
@@ -14,8 +14,8 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 public class ServiceProducerApplication {
 
     public static void main(String[] args) {
-        new SpringApplicationBuilder(ServiceProducerApplication.class).web(true).run(args);
+        // web(true) 已废弃，Boot 2.x 默认即 SERVLET 应用，直接 run 即可
+        SpringApplication.run(ServiceProducerApplication.class, args);
     }
 
 }
-

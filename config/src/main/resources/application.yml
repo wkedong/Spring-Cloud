@@ -1,0 +1,33 @@
+eureka:
+  client:
+    healthcheck:
+      enabled: true #健康检查开启
+    service-url:
+      defaultZone: http://localhost:6060/eureka/
+server:
+  port: 6010
+spring:
+  application:
+    name: config
+  #  cloud:
+  #    config:
+  #      server:
+  #        git:
+  #          uri: https://github.com/wkedong/Spring-Cloud-Config.git
+  profiles:
+    active: jdbc
+  cloud:
+    config:
+      server:
+        jdbc:
+          sql: SELECT `KEY`, `VALUE` from PROPERTIES where APPLICATION=? and PROFILE=? and LABEL=?
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/spring_cloud_config?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    # MySQL 驱动 5.1 → 8.0：驱动类由 com.mysql.jdbc.Driver 更名为 com.mysql.cj.jdbc.Driver
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  # Boot 1.5 的 flyway.* 前缀在 Boot 2.x 迁移到 spring.flyway.*
+  flyway:
+    locations: classpath:/schema
+    baseline-on-migrate: true

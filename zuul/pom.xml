@@ -6,7 +6,7 @@
     <artifactId>zuul</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>zuul</name>
-    <description>Demo project for Spring Boot</description>
+    <description>网关模块（模块名保留 zuul 对应原博客；实现已由 Zuul 迁移为 Spring Cloud Gateway）</description>
 
     <parent>
         <groupId>com.wkedong.springcloud</groupId>
@@ -15,17 +15,31 @@
     </parent>
 
     <dependencies>
+        <!-- starter 更名：spring-cloud-starter-eureka → netflix-eureka-client -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-eureka</artifactId>
+            <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
+        <!-- spring-cloud-starter-zuul 已移除：网关改由 Spring Cloud Gateway 实现（基于 WebFlux，
+             注意本模块不能引入 spring-boot-starter-web，否则 Servlet/Reactive 冲突启动失败） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-zuul</artifactId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
+        </dependency>
+        <!-- Boot 2.4+ 默认不再加载 bootstrap.yml，保留 bootstrap 配置方式需显式引入 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bootstrap</artifactId>
+        </dependency>
+        <!-- eureka.client.healthcheck.enabled 依赖 actuator（其他模块经 eureka-server starter 传递引入，
+             本模块只有 eureka-client，必须显式引入），同时暴露 /actuator/circuitbreakers 等观察端点 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
     </dependencies>
 

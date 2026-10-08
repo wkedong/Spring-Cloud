@@ -1,6 +1,8 @@
+-- Zipkin 2.14+ 不再作为 Spring Boot 库嵌入，改为官方独立发行版（docker-compose 启动），
+-- 默认内存存储无需建库；如需 MySQL 持久化，使用官方 zipkin 依赖的 mysql1 建表脚本：
+-- https://github.com/openzipkin/zipkin/blob/master/zipkin-storage/mysql-v1/src/main/resources/mysql.sql
 CREATE SCHEMA spring_cloud_config;
 CREATE SCHEMA spring_cloud_demo;
-CREATE SCHEMA spring_cloud_zipkin;
 
 USE spring_cloud_demo;
 
