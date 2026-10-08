@@ -27,11 +27,11 @@
         <module>eureka</module>
         <!-- 配置中心-->
         <module>config</module>
-        <!-- 智能网关路由（Zuul 已退役，内部改用 Spring Cloud Gateway 实现；目录名保留以便与 master 对照）-->
+        <!-- 智能网关路由（Zuul 已退役，内部改用 Spring Cloud Gateway 实现；目录名沿用历史名）-->
         <module>zuul</module>
         <!-- Zipkin服务追踪：Zipkin 2.14+ 不再以 Spring Boot 库形式发行，
              本分支改为 docker-compose 启动官方独立 Zipkin（见根目录 docker-compose.yml 与 docs/07），
-             原 zipkin 自建模块已删除（master 分支保留旧版实现）
+             原 zipkin 自建模块已删除（库形态已废弃）
         <module>zipkin</module>-->
         <!--服务生产者-->
         <module>service-producer</module>

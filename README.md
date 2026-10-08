@@ -26,14 +26,16 @@
 
 ## 分支说明
 
-| 分支 | 版本 | 说明 |
-| --- | --- | --- |
-| `develop` | Spring Boot 2.7.18 · Spring Cloud 2021.0.9 · Java 8 | **主分支，现代写法**，与 docs/ 教学文档一一对应 |
-| `master` | Spring Boot 1.5.2 · Spring Cloud Edgware.SR5 · Java 8 | 2019 年旧版实现，作为**新旧对照基线** |
+`develop` 为开发分支，内容即本 README 描述的全部模块（Spring Boot 2.7.18 ·
+Spring Cloud 2021.0.9 · Java 8）；`master` 已与 develop 对齐，作为对外稳定镜像。
 
-两个分支的**模块目录名、业务代码接口完全同构**，因此可以逐文件对比：
-同一功能在旧栈/新栈分别怎么写，差异一目了然（差异清单见 docs/08）。
-部分目录名带历史字样（`zuul`/`ribbon`/`hystrix`），正是为了让两分支能路径对路径地比较。
+> **旧版实现已从分支退场**：退场前的 master 提交为 `f52281f`（Spring Boot 1.5.2 ·
+> Cloud Edgware.SR5，含自建 zipkin 模块、Zuul/Hystrix/Ribbon 原始写法）。
+> 需要追溯旧写法时：`git show f52281f:<文件路径>`，或
+> `git worktree add /tmp/legacy f52281f` 检出一份完整旧版对照；改动清单见 [docs/08](docs/08-升级迁移指南.md)。
+
+部分目录名带历史字样（`zuul`/`ribbon`/`hystrix`），是沿用早期工程结构的历史名，
+实现均已替换为现役组件（Gateway / LoadBalancer / Resilience4j）。
 
 ## 模块与版本矩阵（develop 分支）
 

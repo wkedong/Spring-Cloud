@@ -15,6 +15,6 @@ spring:
       profile: dev
       name: zuul
   application:
-    name: zuul    #当前服务ID（目录名保留 zuul 以对照 master 旧版；实现已迁移为 Spring Cloud Gateway）
+    name: zuul    #当前服务ID（目录名沿用 zuul 历史名；实现已迁移为 Spring Cloud Gateway）
 
 

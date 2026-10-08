@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * 带负载均衡的消费者（目录名保留 ribbon 历史名，以便与 master 分支对照）
+ * 带负载均衡的消费者（目录名沿用 ribbon 历史名，实现已换 LoadBalancer）
  * <p>
  * 2021.0.x 迁移说明：Ribbon 已移除，@LoadBalanced RestTemplate 的
  * 负载均衡由 Spring Cloud LoadBalancer 实现，业务代码无需改动。

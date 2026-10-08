@@ -6,7 +6,7 @@
     <artifactId>zuul</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>zuul</name>
-    <description>网关模块（目录名保留 zuul 以对照 master 旧版；实现已由 Zuul 迁移为 Spring Cloud Gateway）</description>
+    <description>网关模块（目录名沿用 zuul 历史名；实现已由 Zuul 迁移为 Spring Cloud Gateway）</description>
 
     <parent>
         <groupId>com.wkedong.springcloud</groupId>

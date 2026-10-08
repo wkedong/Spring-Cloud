@@ -15,7 +15,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * 3. 路由配置由 zuul.routes.* 迁移到 spring.cloud.gateway.routes.*，
  *    也可开启 discovery.locator 按服务 id 自动生成路由，见本模块 application.yml；
  * 4. 包名由 com.wkedong.springcloud.zuul 更名为 com.wkedong.springcloud.gateway，
- *    模块目录名保留 zuul 以对照 master 分支旧版实现。
+ *    模块目录名沿用 zuul 历史名，避免破坏既有路径引用。
  *
  * @author wkedong
  */

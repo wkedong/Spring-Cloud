@@ -1,7 +1,7 @@
 # 04 · 声明式调用 Feign（OpenFeign）
 
 > 模块：`service-consumer-feign/`（7020）。
-> 新旧对照：`master` 分支同名目录为旧版实现（手写 CommonsMultipartFile 二次包装）。
+> 版本对照：旧版手写 CommonsMultipartFile 二次包装 → 新版 MultipartFile 直接透传。
 
 ## 学什么
 
