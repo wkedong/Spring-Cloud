@@ -20,6 +20,12 @@ spring:
     enabled: true #服务追踪开启
     sampler:
       probability: 1.0 #zipkin收集率（旧键 percentage 已更名为 probability）
+    baggage:
+      # 声明需要跨服务透传的 Baggage key（不声明则不会写进下游请求头）
+      remote-keys:
+        - gray-version
+      local-keys:
+        - gray-version
   datasource: #数据库信息
     url: jdbc:mysql://127.0.0.1:3306/spring_cloud_demo?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root

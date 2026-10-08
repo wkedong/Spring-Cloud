@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>stream-demo</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>stream-demo</name>
+    <description>Spring Cloud Stream 教学模块：Kafka Binder、函数式编程模型、消息分组与重试（端口 8230）</description>
+
+    <parent>
+        <groupId>com.wkedong.springcloud</groupId>
+        <artifactId>parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Micrometer → Prometheus 注册表：暴露 /actuator/prometheus（版本由 spring-boot-dependencies 统一管理，无需写 version） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <!-- Spring Cloud Stream + Kafka Binder（版本由 spring-cloud-dependencies 统一管理） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-stream-kafka</artifactId>
+        </dependency>
+        <!--
+            显式声明 spring-kafka（版本由 spring-boot-starter-parent 统一管理）：
+            binder 已经传递依赖它，但本模块要用 KafkaAdmin / NewTopic 显式声明 topic 分区数，
+            显式声明可避免上游依赖链变化时出现编译期「找不到类」。
+        -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

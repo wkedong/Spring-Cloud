@@ -1,0 +1,35 @@
+# ============================================================================
+# Grafana 数据源 provisioning（教学用）
+# Grafana 启动时自动读取本文件并创建/更新数据源，无需在 UI 里手点。
+# 配套文档：docs/27-指标监控与Grafana.md，使用说明：deploy/README.md
+#
+# 放置位置（Grafana 的 provisioning 根目录下的 datasources/ 子目录）：
+#   容器：  /etc/grafana/provisioning/datasources/prometheus.yml
+#   二进制：<自定 provisioning 目录>/datasources/prometheus.yml，
+#          通过 cfg:default.paths.provisioning=<绝对路径> 指定该根目录
+# ============================================================================
+apiVersion: 1
+
+# 同名数据源会被「更新」而不是重复创建：改完本文件重启 Grafana 即可生效。
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    # uid 必须与 dashboard JSON 里 panels[].datasource.uid 一致，
+    # 否则导入仪表盘后每个面板都会显示 "Datasource prometheus was not found"。
+    uid: prometheus
+    access: proxy            # 由 Grafana 后端代理请求 Prometheus，避免浏览器跨域与内网不可达问题
+    url: http://127.0.0.1:19090   # 教学用自建实例；若改用共享/容器实例，这里换成 http://prometheus:9090 或 http://127.0.0.1:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      # 与 prometheus.yml 的 scrape_interval 对齐：告诉 Grafana 原始数据的最小间隔，
+      # 避免它在放大时间范围时请求过密的点（也能减少 Prometheus 侧的瞬时压力）。
+      timeInterval: '10s'
+      # 用 POST 查询（长 query 不会被 URL 长度限制截断），Prometheus 官方推荐。
+      httpMethod: POST
+      prometheusType: Prometheus
+      prometheusVersion: 3.15.0

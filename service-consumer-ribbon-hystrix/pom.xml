@@ -35,9 +35,21 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
         </dependency>
+        <!-- resilience4j-all：补全 Bulkhead / Decorators 等模块
+             （starter 默认只带 circuitbreaker/ratelimiter/retry/timelimiter，不含 bulkhead 与装饰器组合 API） -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-all</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- Micrometer → Prometheus 注册表：暴露 /actuator/prometheus（版本由 spring-boot-dependencies 统一管理，无需写 version） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>

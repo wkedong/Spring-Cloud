@@ -1,0 +1,162 @@
+# ============================================================================
+# Spring-Cloud 教学仓库 · CI 流水线
+#
+# 每次 push / PR 回答三个问题：
+#   ① 15 个模块能不能一起编译过——多模块 reactor 顺序、Java 8 语法、BOM 版本是否统一；
+#   ② 有断言价值的单元测试是否还绿——springboot-basics 15 个用例 + 网关上下文 1 个；
+#   ③ 可执行 jar 是否都能产出——打包后把制品留档，供人工下载验收。
+#
+# 为什么 CI 里不跑集成测试：
+#   6 个 contextLoads 类（service-producer / service-consumer / service-consumer-feign /
+#   service-consumer-ribbon / service-consumer-ribbon-hystrix / FeignServiceTest）以及
+#   nacos-demo、stream-demo、seata-demo、config 的完整启动，依赖运行时中间件——
+#   eureka(6060)、config(6010)、MySQL(3306)、Zipkin(9411)、Nacos(8848)、Kafka(9092)、
+#   Seata(8091)。托管 runner 上没有这些中间件，因此这些测试类在源码里统一标了 @Disabled
+#   并写明原因；CI 只跑不依赖中间件的用例，避免流水线长期变红（长期红的流水线等于没有流水线）。
+#
+# 本地怎么做完整集成验证：
+#   按 docs/09-本地运行指南.md 用 docker compose 起 MySQL/Zipkin（以及按需的 Nacos/Kafka），
+#   再 mvn -B test，或临时去掉对应测试类上的 @Disabled 后单跑；集成验证不放进 CI。
+#
+# 本机等价性验证（GitHub 官方 runner 无法在本机执行，只能验证命令等价性）：
+#   JDK 17（本机 Corretto 17.0.20）+ Maven 3.9.16，在「剔除 target/ 的干净副本」中逐条执行
+#   下面的 run 命令，结果均为 BUILD SUCCESS——同一批命令在 GitHub runner 上只差一个干净
+#   的宿主环境与 Maven 仓库缓存，参见 docs/30-CICD与工程化收尾.md 的实测记录。
+# ============================================================================
+
+name: CI
+
+# 触发：主分支推送 + 所有 PR（PR 来自 fork 时同样会跑，用于合并前拦住编译/测试回归）
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+
+# 同一分支连续推送时取消上一次未完成的运行，避免排队堆积
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --------------------------------------------------------------------------
+  # job 1：编译 + 打包 + 制品上传
+  # --------------------------------------------------------------------------
+  build:
+    name: 编译与打包
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17（temurin）并缓存 Maven 本地仓库
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin      # 与本机 Corretto 17.0.20 同属 JDK 17，产物无差异
+          java-version: '17'         # 源码是 Java 8 语法（java.version=1.8），用 17 编译
+          cache: maven               # 缓存 ~/.m2/repository，命中后省掉整轮依赖下载
+
+      # -DskipTests 只跳过「执行」测试，test-compile 仍然会编译测试源码：
+      # 测试类写错一样会让这个 job 红，这正是我们想要的早期信号。
+      # 注意它和 -Dmaven.test.skip=true 的区别：后者连测试源码都不编译。
+      - name: 编译并打包（跳过测试执行）
+        run: mvn -B -V -DskipTests package
+
+      # 制品路径 = <模块目录>/target/<artifactId>-<version>.jar，版本 0.0.1-SNAPSHOT 来自父 pom。
+      # spring-boot-maven-plugin 已把可执行模块 repackage 成 java -jar 可直跑的 fat jar
+      # （MANIFEST 里 Main-Class: JarLauncher + Start-Class: 各模块启动类）；
+      # basics-audit-spring-boot-starter 是库 jar（无 BOOT-INF），供 springboot-basics 依赖。
+      - name: 上传各模块 jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: spring-cloud-jars
+          if-no-files-found: error   # 路径写错就立刻失败，别让「空制品」静默通过
+          retention-days: 7
+          path: |
+            eureka/target/eureka-0.0.1-SNAPSHOT.jar
+            config/target/config-0.0.1-SNAPSHOT.jar
+            zuul/target/zuul-0.0.1-SNAPSHOT.jar
+            service-producer/target/service-producer-0.0.1-SNAPSHOT.jar
+            service-consumer/target/service-consumer-0.0.1-SNAPSHOT.jar
+            service-consumer-feign/target/service-consumer-feign-0.0.1-SNAPSHOT.jar
+            service-consumer-ribbon/target/service-consumer-ribbon-0.0.1-SNAPSHOT.jar
+            service-consumer-ribbon-hystrix/target/service-consumer-ribbon-hystrix-0.0.1-SNAPSHOT.jar
+            basics-audit-spring-boot-starter/target/basics-audit-spring-boot-starter-0.0.1-SNAPSHOT.jar
+            springboot-basics/target/springboot-basics-0.0.1-SNAPSHOT.jar
+            nacos-demo/target/nacos-demo-0.0.1-SNAPSHOT.jar
+            sentinel-demo/target/sentinel-demo-0.0.1-SNAPSHOT.jar
+            stream-demo/target/stream-demo-0.0.1-SNAPSHOT.jar
+            security-demo/target/security-demo-0.0.1-SNAPSHOT.jar
+            seata-demo/seata-order/target/seata-order-0.0.1-SNAPSHOT.jar
+            seata-demo/seata-inventory/target/seata-inventory-0.0.1-SNAPSHOT.jar
+
+  # --------------------------------------------------------------------------
+  # job 2：单元测试
+  # --------------------------------------------------------------------------
+  test:
+    name: 单元测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17（temurin）并缓存 Maven 本地仓库
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # -Dtest='*Test,*Tests' 只跑命名规范的用例（本仓库两类：*Tests 是上下文测试，
+      # *Test 是切片/单元测试）。
+      # -DfailIfNoTests=false 是必须的：一旦指定了 -Dtest，surefire 在「模块里一个匹配的
+      # 测试类都没有」时会直接判失败——本机实测第一条报错就是 eureka 模块：
+      #   Failed to execute goal ...maven-surefire-plugin:2.22.2:test (default-test) on
+      #   project eureka: No tests were executed! (Set -DfailIfNoTests=false to ignore ...)
+      # eureka / config / nacos-demo 等 8 个模块本来就没有测试源码（不是遗漏，而是它们的
+      # 验证形态是「起进程 + curl」，见 docs/09、docs/16），加上这个开关才会是绿的。
+      - name: 跑单元测试（不依赖外部中间件）
+        run: mvn -B -Dtest='*Test,*Tests' -DfailIfNoTests=false test
+
+      # 失败时也要把报告捞出来，否则只能在 CI 日志里翻用例名
+      - name: 上传 surefire 报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          if-no-files-found: ignore
+          retention-days: 7
+          path: '**/target/surefire-reports/*.txt'
+
+  # --------------------------------------------------------------------------
+  # job 3（可选）：依赖治理与完整生命周期校验
+  # 与 build 的差别：build 只证明「能打包」，这里把生命周期走到 verify，并把父 pom 里
+  # BOM 生效后的真实版本打进日志，方便排查「本地能跑、CI 换版本」的诡异问题。
+  # --------------------------------------------------------------------------
+  quality:
+    name: 依赖治理（可选）
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17（temurin）并缓存 Maven 本地仓库
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # verify 覆盖 package 之后的校验型插件；-DskipTests 保证这里同样不碰中间件
+      - name: 生命周期校验（verify）
+        run: mvn -B -DskipTests verify
+
+      # 只留 Spring Cloud / Alibaba 两族依赖，输出即「BOM 到底给了哪个版本」的证据：
+      # 父 pom 用 dependencyManagement 导入 2021.0.9 与 2021.0.5.0，
+      # 各模块的 <dependency> 一律不写 version（写了反而会绕过 BOM 造成版本漂移）。
+      - name: 打印关键模块的云组件版本
+        run: |
+          mvn -B -pl service-consumer-feign -DskipTests dependency:tree \
+            "-Dincludes=org.springframework.cloud:*,com.alibaba.cloud:*"

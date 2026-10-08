@@ -22,3 +22,51 @@ spring:
     enabled: true #服务追踪开启
     sampler:
       probability: 1.0 #zipkin收集率（旧键 percentage 已更名为 probability）
+
+# ============================ Feign 进阶配置（docs/17） ============================
+feign:
+  # 开启后 Feign 调用会被 CircuitBreaker 包装，fallbackFactory 才会生效
+  circuitbreaker:
+    enabled: true
+  client:
+    config:
+      default:
+        connectTimeout: 2000   # 连接超时（毫秒）
+        readTimeout: 2000      # 读超时：producer /testSlow?seconds=5 必然超时
+        loggerLevel: full      # 等价于在 FeignConfig 里声明 Logger.Level.FULL
+      service-producer:        # 按客户端名覆盖（优先级高于 default）
+        connectTimeout: 2000
+        readTimeout: 2000
+
+# Feign 日志级别最终还是由「客户端接口所在包」的日志级别决定
+logging:
+  level:
+    com.wkedong.springcloud.serviceconsumer.feign.service: debug
+
+# 暴露 actuator 端点：本模块要看 /actuator/circuitbreakers、/actuator/circuitbreakerevents
+# （默认只暴露 health/info，不显式放开会 404 —— 实测确认过）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# Resilience4j：Feign 的 circuitbreaker 包装使用这些默认配置
+resilience4j:
+  timelimiter:
+    configs:
+      default:
+        # 比 Feign 的 readTimeout(2s) 略大，保证先看到 Feign 的超时行为
+        timeout-duration: 3s
+        cancel-running-future: true
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s

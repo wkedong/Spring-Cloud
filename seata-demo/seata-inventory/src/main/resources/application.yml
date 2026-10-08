@@ -1,0 +1,47 @@
+server:
+  port: 8260
+
+spring:
+  application:
+    name: seata-inventory
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/seata_inventory?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: inventory-hikari
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+# ===== Seata：分支事务参与方（RM）配置 =====
+seata:
+  enabled: true
+  # 应用标识，会出现在 seata-server 的会话信息里
+  application-id: seata-inventory
+  # 事务分组名：客户端用它去 vgroup-mapping 里查「该连哪个 Seata 集群」
+  tx-service-group: my_test_tx_group
+  # 让 seata 自动把容器里的 DataSource 包成 DataSourceProxy（AT 模式的前提）
+  enable-auto-data-source-proxy: true
+  service:
+    # 事务分组 -> Seata 集群名 的映射
+    vgroup-mapping:
+      my_test_tx_group: default
+    # 集群名 -> 服务端地址列表（registry.type=file 时直接用这份清单，不查注册中心）
+    grouplist:
+      default: 127.0.0.1:8091
+  registry:
+    type: file
+  config:
+    type: file
+
+logging:
+  level:
+    io.seata: INFO
+    com.wkedong.springcloud.seata: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,loggers

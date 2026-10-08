@@ -1,0 +1,26 @@
+# =============================================================================
+# application.yml —— 本地配置（优先级对照实验的「本地一方」）
+#
+# 与 Nacos 远端同名 key 写在两处，是为了让 /nacos/config/priority 端点
+# 把「谁覆盖谁」直接打出来；结论以本机实测为准，不要凭印象。
+# =============================================================================
+nacos:
+  demo:
+    # 故意与 Nacos 远端同名：远端、本地、命令行三方对照的样本 key
+    priority: from-local-application-yml
+    # 只在本地存在：用来证明「本地配置并没有被远端整体替换掉，而是按 key 合并」
+    local-only: only-in-local-application-yml
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,env,configprops,refresh
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.alibaba.nacos: info
+    com.wkedong.springcloud.nacos: info

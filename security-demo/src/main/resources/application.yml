@@ -1,0 +1,71 @@
+# ============================================================================
+# security-demo：Spring Security + JWT 教学模块（端口 8240）
+# 单机可跑：不依赖注册中心/配置中心，直接 java -jar 启动即可
+# ============================================================================
+server:
+  port: 8240
+  # 优雅停机：收到 SIGTERM 后先停止接收新请求，处理中的请求跑完再退出
+  shutdown: graceful
+
+spring:
+  application:
+    name: security-demo
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+# ============================================================================
+# 安全相关配置：由 JwtProperties / GatewayAuthProperties 绑定
+# ============================================================================
+security:
+  jwt:
+    # 对称密钥（HS256）：必须 ≥ 32 字节（256 位），否则启动直接失败。
+    # 教学默认值写在这里只是为了「单机可跑」；生产必须改成：
+    #   export SECURITY_JWT_SECRET='...'   （环境变量优先级高于 yml，无需改代码/改包）
+    # 或放进 Nacos 配置中心的加密配置里，绝不要提交到 Git。
+    secret: ${SECURITY_JWT_SECRET:security-demo-teaching-secret-key-please-change-me-32bytes}
+    # 签发者：解码侧会用同一个值校验 iss，避免「别家签的 token 拿来用」
+    issuer: security-demo
+    # 令牌有效期（秒），默认 1 小时
+    ttl-seconds: 3600
+    # 角色 claim 名（本模块用 roles；若用 OAuth2 标准 scope，权限会带 SCOPE_ 前缀）
+    authorities-claim: roles
+    # 权限前缀：hasRole('ADMIN') 实际比对的是 ROLE_ADMIN
+    authority-prefix: ROLE_
+    # 教学开关：true = 使用 Spring Security 默认的 claim 映射（只认 scope → SCOPE_），
+    # 用来实测「roles claim 不被识别、管理员接口 403」这个最常见的坑
+    use-default-converter: false
+    # 密钥 id，写进 JWT 头部的 kid，便于将来做密钥轮换
+    key-id: security-demo-hmac-key
+
+  auth:
+    # true = 401/403 输出统一 JSON（ApiResponse 风格）；false = 用 Spring Security 默认行为（无 body）
+    json-error:
+      enabled: true
+
+  # ---------- 网关侧鉴权演示（默认关闭） ----------
+  # 本模块自己已经是「资源服务器」，网关过滤器是给 zuul/ 模块抄的样例代码；
+  # 打开后可实测「网关先校验、把用户信息通过请求头下传」的效果。
+  gateway:
+    enabled: false
+    # 需要保护的路径前缀（模拟网关上的业务路由）
+    protected-paths:
+      - /api/**
+    # 免鉴权白名单（登录、健康检查、公开接口）
+    whitelist:
+      - /auth/**
+      - /api/public/**
+      - /actuator/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    root: info
+    com.wkedong.springcloud.security: info

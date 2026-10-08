@@ -1,0 +1,108 @@
+server:
+  # 教学端口固定 8230；多实例实验用 --server.port=8231/8232 覆盖
+  port: 8230
+
+spring:
+  application:
+    name: stream-demo
+  cloud:
+    # 函数式编程模型：哪些函数 Bean 真正参与绑定，由 definition 决定（用 ; 分隔）。
+    # 不写这一行时，框架只在「容器里恰好只有一个函数」的情况下自动推断；
+    # 一旦存在多个函数 Bean（本模块有 4 个），必须显式声明，否则启动期报「候选函数不唯一」。
+    # 想验证「只启用一部分」：改成 consume;transform，定时生产就会停掉（produce 的 binding 也不会创建）。
+    function:
+      definition: consume;transform;produce
+    stream:
+      # 供 StreamBridge 使用的输出 binding 必须在启动时就创建出来，写法是「逻辑名」：
+      # 框架会自动补 -out-0 后缀 → 实际 binding 名为 streamSend-out-0。
+      # 实测两个坑：① 不声明时首次发送会报 "Dispatcher has no subscribers"；
+      #           ② 这里若写成 streamSend-out-0，框架会再补一次后缀，建出无用的 streamSend-out-0-out-0。
+      output-bindings: streamSend
+      bindings:
+        # ---- 消费：Consumer<Message<String>>，binding 名 = 方法名 + -in-0 ----
+        consume-in-0:
+          # 显式指定 topic；destination 不写时，实测默认值就是 binding 名（即 consume-in-0）
+          destination: stream-demo-topic
+          # 默认 contentType 是 application/json，会让 String 变成带引号的 JSON；文本消息要显式声明
+          contentType: text/plain
+          # group 映射为 Kafka 的 group.id：同 group 竞争消费（负载均衡 + offset 共享），不同 group 之间是广播
+          group: stream-demo-group
+          consumer:
+            # 消费方法抛异常时的重试次数（含第一次调用）：3 = 总共调用 3 次；-1 = 无限重试（毒消息会永久堵住分区）
+            max-attempts: 3
+            # 退避：首次间隔 1s、默认倍数 2 → 1s、2s……（上限 back-off-max-interval，默认 10s）
+            back-off-initial-interval: 1000
+        # ---- 处理并转发：Function<String,String>，binding 名 = 方法名 + -in-0 / -out-0 ----
+        transform-in-0:
+          # 与 consume 消费同一个 topic，但换成另一个消费者组 → 组间广播：两个函数各收到一份
+          destination: stream-demo-topic
+          contentType: text/plain
+          group: stream-demo-transform-group
+          consumer:
+            max-attempts: 1
+        transform-out-0:
+          # 转发目标：不加配置时默认 topic 名同样是 binding 名（transform-out-0）
+          destination: stream-demo-transform-output
+          contentType: text/plain
+          producer:
+            partition-count: 3
+        # ---- HTTP 触发生产（StreamBridge 使用的 binding）----
+        streamSend-out-0:
+          # destination 必须与消费端 topic 一致，否则消息发出去没人消费
+          destination: stream-demo-topic
+          contentType: text/plain
+          producer:
+            partition-count: 3
+        # ---- 定时生产：Supplier<String>，binding 名 = 方法名 + -out-0 ----
+        produce-out-0:
+          # 故意不配 destination：用来现场对照「默认 destination = binding 名」（实测 topic 名为 produce-out-0）
+          contentType: text/plain
+      # Supplier 的触发节奏：Stream 内置 poller，默认 fixed-delay=1s、每轮 1 条
+      poller:
+        fixed-delay: 3000
+        max-messages-per-poll: 1
+      kafka:
+        binder:
+          brokers: 127.0.0.1:9092
+          # 本地单节点 broker：副本数只能为 1（多副本会一直处于 under-replicated）
+          replication-factor: 1
+          # 允许 Binder 按 binding 配置自动创建 topic（生产环境通常关闭，改为运维预建 + ACL 管控）
+          auto-create-topics: true
+        bindings:
+          consume-in-0:
+            consumer:
+              # 死信队列：重试次数用尽后把「毒消息」原样投递到 DLQ topic，避免它把分区堵死
+              enable-dlq: true
+              # 不配 dlq-name 时默认名为 <destination>.DLQ
+              dlq-name: stream-demo-dlq
+              configuration:
+                # 新消费者组首次启动的拉取位置：earliest=从头读（默认 latest 会漏掉启动前发出的消息）
+                auto.offset.reset: earliest
+          transform-in-0:
+            consumer:
+              configuration:
+                auto.offset.reset: earliest
+
+# 暴露 bindings 端点：可直接看到框架实际创建了哪些 binding（以及运行状态），
+# 是验证「函数名 → binding 名」规则最省事的办法
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,bindings,mappings,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# 本模块自定义配置
+stream-demo:
+  # 内存缓冲最多保留多少条消费记录
+  buffer-capacity: 50
+  # 输入 topic 的分区数（KafkaTopicConfig 用 KafkaAdmin 在启动时按此建 topic）
+  topic-partitions: 3
+
+logging:
+  level:
+    root: INFO
+    # Kafka 客户端日志很吵，教学日志里只留 WARN；Binder 的重试/DLQ 日志仍是 INFO/ERROR
+    org.apache.kafka: WARN

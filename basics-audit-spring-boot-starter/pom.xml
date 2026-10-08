@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>basics-audit-spring-boot-starter</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>basics-audit-spring-boot-starter</name>
+    <description>自定义 Spring Boot Starter：演示自动配置原理（条件装配、配置绑定、AutoConfiguration.imports）</description>
+
+    <parent>
+        <groupId>com.wkedong.springcloud</groupId>
+        <artifactId>parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <dependencies>
+        <!-- 自动配置类依赖 spring-boot-autoconfigure；starter 自身不应拖入 web 等具体技术栈 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+        <!-- 生成配置元数据（IDE 里写 basics.audit.* 有提示），对使用方是可选的 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- starter 是普通 jar（不打可执行 fat jar），因此禁用 Boot 的 repackage -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

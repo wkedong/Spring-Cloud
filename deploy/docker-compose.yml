@@ -1,0 +1,328 @@
+# =============================================================================
+# Spring-Cloud 教学仓库：整栈编排（Eureka + Config + 业务服务 + MySQL + Zipkin）
+#
+#   cd 仓库根目录
+#   docker compose -f deploy/docker-compose.yml build
+#   docker compose -f deploy/docker-compose.yml up -d
+#   docker compose -f deploy/docker-compose.yml down          # 保留数据卷
+#   docker compose -f deploy/docker-compose.yml down -v       # 连数据卷一起删
+#
+# 启动顺序由 depends_on + healthcheck 保证：
+#   mysql → eureka → config → producer → (feign / ribbon / hystrix)
+# 与 docs/09-本地运行指南.md 里「eureka → config → 业务」的裸机顺序完全一致。
+#
+# ⚠️ 本机没有 Docker 环境，本文件未实跑过（见 docs/29-容器化部署.md 的「未能核实之处」）。
+#    所有模块名、端口、profile、依赖关系都按仓库真实配置写成。
+#
+# ⚠️ 端口占用：宿主端口与容器端口一一对应（6060/6010/6050/6070/6080/7020/7030/7040/3306/9411）。
+#    如果你已经用 `java -jar` 在本机起过同一批服务，这几个端口会被占用，
+#    compose 会报 "port is already allocated" —— 两套环境二选一，别同时跑。
+#    确实需要并存时，用 ${VAR:-默认值} 形式只改宿主侧，例如 "16070:6070"。
+# =============================================================================
+
+name: spring-cloud-demo
+
+# -----------------------------------------------------------------------------
+# 共用片段：所有「要注册到 Eureka + 从 Config 拉配置」的业务服务都用这一份。
+# bootstrap.yml 里写的是 localhost:6060 / localhost:6010，容器里 localhost 指向
+# 容器自己，所以必须用环境变量覆盖（Spring Boot relaxed binding）：
+#   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE ← eureka.client.serviceUrl.defaultZone
+#   SPRING_CLOUD_CONFIG_URI              ← spring.cloud.config.uri
+# -----------------------------------------------------------------------------
+x-cloud-env: &cloud-env
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:6060/eureka/
+  SPRING_CLOUD_CONFIG_URI: http://config:6010/
+  # 只给真正引了 sleuth-zipkin 的模块加这行才有效果（producer / consumer / feign / ribbon / hystrix）
+  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+
+x-build: &build
+  context: ..
+  dockerfile: deploy/Dockerfile
+
+x-depends: &depends
+  eureka:
+    condition: service_healthy
+  config:
+    condition: service_healthy
+
+services:
+
+  # ---------------------------------------------------------------- 基础设施
+  mysql:
+    image: mysql:8.0
+    container_name: sc-mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: "123456"
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      # 初始化脚本只建库（spring_cloud_config / spring_cloud_demo）与 demo 表；
+      # properties 表由 config 模块的 Flyway 迁移（schema/V1.0__Base_version.sql）创建。
+      - ../sql/InitSQL.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks: [spring-cloud-net]
+
+  zipkin:
+    image: openzipkin/zipkin:3
+    container_name: sc-zipkin
+    environment:
+      TZ: Asia/Shanghai
+      # 默认内存存储，重启即清空；要持久化就照根目录 docker-compose.yml 的注释打开 MySQL 存储
+    ports:
+      - "9411:9411"
+    # 不设 healthcheck：官方镜像里可用的 HTTP 客户端不确定，写错会一直显示 unhealthy。
+    # Zipkin 是「上报型」依赖，掉了只丢 span、不影响业务，因此也没有任何服务 depends_on 它。
+    networks: [spring-cloud-net]
+
+  # ---------------------------------------------------------------- 注册中心
+  eureka:
+    build:
+      <<: *build
+      args:
+        MODULE: eureka
+        APP_PORT: 6060
+    image: spring-cloud/eureka:0.0.1
+    container_name: sc-eureka
+    environment:
+      TZ: Asia/Shanghai
+    ports:
+      - "6060:6060"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:6060/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 40s
+    networks: [spring-cloud-net]
+
+  # ---------------------------------------------------------------- 配置中心
+  config:
+    build:
+      <<: *build
+      args:
+        MODULE: config
+        APP_PORT: 6010
+    image: spring-cloud/config:0.0.1
+    container_name: sc-config
+    environment:
+      TZ: Asia/Shanghai
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:6060/eureka/
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/spring_cloud_config?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+      # ---- Flyway 开关：全新库保持 true（自动建 properties 表并播种数据）----
+      # 若库里已经有 properties 表、却没有配套的 flyway_schema_history（比如把老库挂进来、
+      # 或反复初始化同一个数据卷），启动会失败并报：
+      #   Duplicate entry '1' for key 'properties.PRIMARY'
+      # 原因：V1.1__Update_version.sql 用的是显式主键 INSERT，重跑必然撞主键。
+      # 本机教学环境就是这样绕过的（docs/21 有实测记录）：
+      #   java -jar config/target/config-0.0.1-SNAPSHOT.jar --spring.flyway.enabled=false
+      # 容器里等价写法就是把下面这行改成 "false"（或启动时 -e SPRING_FLYWAY_ENABLED=false）：
+      SPRING_FLYWAY_ENABLED: "${CONFIG_FLYWAY_ENABLED:-true}"
+    ports:
+      - "6010:6010"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+    healthcheck:
+      # config 模块没有引 actuator，所以用配置中心自带的 REST 接口探活。
+      # 这个接口会真的查一次 MySQL，比单纯探端口更能证明「配置中心可用」。
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:6010/service-producer/dev/develop || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    networks: [spring-cloud-net]
+
+  # ---------------------------------------------------------------- 服务提供者（双实例）
+  # profile 传参示例：peer1/peer2 是仓库里的 profile 特定文件
+  # （service-producer/src/main/resources/application-peer{1,2,3}.yml，只定义端口与 metadata-map）。
+  # ⚠️ profile 特定文件里不能声明 spring.profiles.active（Boot 2.4+ 会启动失败），只能从外面传。
+  # 注意不要把它和 compose 自己的 profiles: 混为一谈——后者控制「哪些服务被启动」，
+  # 例如给某个服务写 profiles: ["nacos"] 后，只有 docker compose --profile nacos up 才会起它。
+  producer-peer1:
+    build:
+      <<: *build
+      args:
+        MODULE: service-producer
+        APP_PORT: 6070
+    image: spring-cloud/service-producer:0.0.1
+    container_name: sc-producer-peer1
+    environment:
+      <<: *cloud-env
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: peer1          # → server.port=6070、metadata version=v1/zone-a
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/spring_cloud_demo?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+    ports:
+      - "6070:6070"
+    depends_on:
+      <<: *depends
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:6070/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    networks: [spring-cloud-net]
+
+  producer-peer2:
+    build:
+      <<: *build
+      args:
+        MODULE: service-producer
+        APP_PORT: 6080
+    image: spring-cloud/service-producer:0.0.1
+    container_name: sc-producer-peer2
+    environment:
+      <<: *cloud-env
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: peer2          # → server.port=6080、metadata version=v2/zone-b
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/spring_cloud_demo?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: "123456"
+    ports:
+      - "6080:6080"
+    depends_on:
+      <<: *depends
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:6080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    networks: [spring-cloud-net]
+
+  # ---------------------------------------------------------------- 消费者三件套
+  consumer-feign:
+    build:
+      <<: *build
+      args:
+        MODULE: service-consumer-feign
+        APP_PORT: 7020
+    image: spring-cloud/service-consumer-feign:0.0.1
+    container_name: sc-consumer-feign
+    environment:
+      <<: *cloud-env
+      TZ: Asia/Shanghai
+    ports:
+      - "7020:7020"
+    depends_on:
+      <<: *depends
+      producer-peer1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:7020/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    networks: [spring-cloud-net]
+
+  consumer-ribbon:
+    build:
+      <<: *build
+      args:
+        MODULE: service-consumer-ribbon
+        APP_PORT: 7030
+    image: spring-cloud/service-consumer-ribbon:0.0.1
+    container_name: sc-consumer-ribbon
+    environment:
+      <<: *cloud-env
+      TZ: Asia/Shanghai
+    ports:
+      - "7030:7030"
+    depends_on:
+      <<: *depends
+      producer-peer1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:7030/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    networks: [spring-cloud-net]
+
+  consumer-hystrix:
+    build:
+      <<: *build
+      args:
+        MODULE: service-consumer-ribbon-hystrix
+        APP_PORT: 7040
+    image: spring-cloud/service-consumer-ribbon-hystrix:0.0.1
+    container_name: sc-consumer-hystrix
+    environment:
+      <<: *cloud-env
+      TZ: Asia/Shanghai
+    ports:
+      - "7040:7040"
+    depends_on:
+      <<: *depends
+      producer-peer1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:7040/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    networks: [spring-cloud-net]
+
+  # ---------------------------------------------------------------- 网关
+  # 目录名沿用历史名 zuul，实现已迁移为 Spring Cloud Gateway（artifactId 也是 zuul）。
+  gateway:
+    build:
+      <<: *build
+      args:
+        MODULE: zuul
+        APP_PORT: 6050
+    image: spring-cloud/zuul-gateway:0.0.1
+    container_name: sc-gateway
+    environment:
+      <<: *cloud-env
+      TZ: Asia/Shanghai
+    ports:
+      - "6050:6050"
+    depends_on: *depends
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:6050/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 60s
+    networks: [spring-cloud-net]
+
+# -----------------------------------------------------------------------------
+# 没写进本文件的模块（按需照抄一段即可）：
+#   service-consumer        7010  依赖 eureka + config + producer
+#   springboot-basics       8010  单机自足（H2 内存库），不需要 eureka/config/mysql
+#   nacos-demo              8210  需要 Nacos 8848，见 deploy/docker-compose-nacos.yml
+#   sentinel-demo           8220  可选 Sentinel Dashboard
+#   stream-demo             8230  需要 Kafka 9092
+#   security-demo           8240  单机
+#   seata-demo/{order,inventory}  8250/8260  需要 Seata Server 8091 + MySQL
+# 端口与依赖的权威清单见 docs/09-本地运行指南.md。
+# -----------------------------------------------------------------------------
+
+networks:
+  spring-cloud-net:
+    driver: bridge
+
+volumes:
+  mysql-data:

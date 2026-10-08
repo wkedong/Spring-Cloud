@@ -1,0 +1,134 @@
+# ============================================================================
+# springboot-basics：Spring Boot 本体教学模块（默认配置）
+# 启动：mvn -pl springboot-basics spring-boot:run  （或 java -jar target/*.jar）
+# 端口：8010    数据库：H2 内存库（无需安装任何外部组件）
+# ============================================================================
+server:
+  port: 8010
+  # 优雅停机：收到 SIGTERM 后先停止接收新请求，等正在处理的请求结束再退出
+  shutdown: graceful
+
+spring:
+  application:
+    name: springboot-basics
+  # 默认激活 dev profile；命令行用 --spring.profiles.active=prod 可覆盖
+  profiles:
+    active: dev
+  lifecycle:
+    # 优雅停机的最长等待时间，超过则强制退出（默认 30s）
+    timeout-per-shutdown-phase: 20s
+
+  # ---------- 数据源：H2 内存库（教学零依赖；换 MySQL 只需改这一段） ----------
+  datasource:
+    url: jdbc:h2:mem:basics;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # ---------- JPA ----------
+  jpa:
+    hibernate:
+      # 教学用：每次启动重建表结构；生产必须是 none/validate + Flyway 迁移
+      ddl-auto: create-drop
+    # Boot 2.5+ 的关键开关：让 data.sql 在 JPA 建表「之后」执行（否则脚本先跑会报表不存在）
+    defer-datasource-initialization: true
+    # 关闭 OpenEntityManagerInView：避免视图层拿着 Session 导致懒加载偶发 SQL
+    open-in-view: false
+    show-sql: false
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8
+
+  cache:
+    type: caffeine
+
+  # 定时任务调度线程池：默认只有 1 个线程，多个 @Scheduled 会互相阻塞
+  task:
+    scheduling:
+      pool:
+        size: 2
+      thread-name-prefix: basics-sched-
+
+# ============================================================================
+# 业务配置：由 BasicsProperties 绑定（@ConfigurationProperties + @Validated）
+# 可用环境变量/命令行参数覆盖，例如 --basics.environment=from-cli
+# ============================================================================
+basics:
+  app-name: springboot-basics
+  environment: ${BASICS_ENV:local}
+  # 演示用固定 token：请求头 X-Token 必须带这个值（生产请换成 JWT/OAuth2）
+  security-token: ${BASICS_TOKEN:dev-token}
+  features:
+    cache-demo: true
+    async-demo: true
+    tx-demo: true
+  contacts:
+    - wkedong@example.com
+  retry:
+    max-attempts: 3
+    # Duration 类型支持 200ms / 2s / 1m 这类写法（松散绑定）
+    backoff: 200ms
+  cache:
+    ttl: 5s
+    max-size: 100
+  # 下面是自定义 starter（basics-audit-spring-boot-starter）的配置项：
+  # 本模块没有写过任何装配代码，配好后就能 @Autowired AuditLogger
+  audit:
+    enabled: true
+    prefix: "[BASICS-AUDIT]"
+    max-detail-length: 120
+    slow-threshold: 500ms
+
+# ============================================================================
+# Actuator：可观测与运维入口
+# 注意：env/configprops/beans 等端点会暴露配置与 Bean 结构，生产环境务必
+#      ①收紧 exposure.include ②加认证 ③用 management.endpoint.*.enabled 关闭
+# ============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        # prometheus：Micrometer 的 Prometheus 注册表（拉取端点，格式为文本 exposition）
+        include: health,info,metrics,prometheus,beans,env,configprops,loggers,mappings,threaddump,caches,scheduledtasks,conditions,basics
+  endpoint:
+    health:
+      show-details: always
+    # Prometheus 抓取端点显式打开（默认 true，关闭时 /actuator/prometheus 直接 404）
+    prometheus:
+      enabled: true
+  # ---------- Micrometer 指标（详见 docs/27-指标监控与Grafana.md） ----------
+  metrics:
+    tags:
+      # 通用标签：所有指标自动带上 application，多服务共用一个 Prometheus 时可区分来源
+      application: ${spring.application.name}
+    distribution:
+      # HTTP 服务端指标开启直方图：才能用 histogram_quantile() 算 P95/P99（且可跨实例聚合）
+      percentiles-histogram:
+        http.server.requests: true
+      # 显式 SLO 桶：把延迟按业务关心的边界分档，便于算「3 秒内完成率」
+      slo:
+        http.server.requests: 50ms,100ms,300ms,1s,3s
+      minimum-expected-value:
+        http.server.requests: 1ms
+      maximum-expected-value:
+        http.server.requests: 10s
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
+    module: springboot-basics
+    description: Spring Boot 本体教学模块（Web 层/配置/缓存/异步/事务/Actuator/停机/测试）
+
+logging:
+  level:
+    root: info
+    com.wkedong.springboot.basics: debug
+    com.wkedong.boot.audit: debug
