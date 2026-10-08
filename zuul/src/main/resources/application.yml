@@ -1,9 +1,11 @@
 # Spring Cloud Gateway 路由配置（替代原 Zuul 的 zuul.routes.*）
+# 注：eureka 注册、config 拉取、server.port 仍在 bootstrap.yml（配置中心相关必须放 bootstrap 阶段）
 spring:
   cloud:
     gateway:
       # 按注册中心服务 id 自动生成路由：/service-producer/**、/service-consumer/** 等
       # （等价于 Zuul 开启 Ribbon 路由的默认行为）
+      # 注意：locator 生成的是「裸路由」，不经过业务前缀，生产环境常关闭它只保留显式路由
       discovery:
         locator:
           enabled: true
@@ -22,3 +24,57 @@ spring:
             - Path=/api/consumer/**
           filters:
             - StripPrefix=2
+        # 重试演示路由：只对 5xx/异常重试（幂等 GET），单独一条便于对比「有重试 / 无重试」
+        - id: service-producer-retry
+          uri: lb://service-producer
+          predicates:
+            - Path=/api/retry/**
+          filters:
+            - StripPrefix=2
+            - name: Retry
+              args:
+                retries: 2 #重试 2 次（总共最多 3 次请求）
+                series: SERVER_ERROR #5xx 系列
+                statuses: BAD_GATEWAY,INTERNAL_SERVER_ERROR
+                methods: GET
+                backoff:
+                  firstBackoff: 100ms
+                  maxBackoff: 500ms
+                  factor: 2
+                  basedOnPreviousValue: false
+      # 跨域：网关统一处理，业务服务不必各自配 CORS
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            allowedOriginPatterns: "*" #允许的来源（教学放开；生产收窄到具体域名）
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
+            maxAge: 3600
+      httpclient:
+        connect-timeout: 2000 # 连接超时（毫秒）
+        response-timeout: 10s # 响应超时：超过则网关返回 500/504
+# 自定义过滤器配置（AuthGlobalFilter / InMemoryRateLimitGlobalFilter 读取）
+gateway:
+  auth:
+    token: dev-token
+  ratelimit:
+    capacity: 10 #窗口内允许的请求数
+    window-seconds: 10 #窗口长度
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    gateway:
+      enabled: true #开启 /actuator/gateway/routes 端点，可在线查看路由表
+    health:
+      show-details: always
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.wkedong.springcloud.zuul: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n"

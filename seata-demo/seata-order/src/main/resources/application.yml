@@ -1,0 +1,53 @@
+server:
+  port: 8250
+
+spring:
+  application:
+    name: seata-order
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/seata_order?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: order-hikari
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+# ===== Seata：全局事务发起方（TM）配置 =====
+seata:
+  enabled: true
+  application-id: seata-order
+  tx-service-group: my_test_tx_group
+  enable-auto-data-source-proxy: true
+  service:
+    vgroup-mapping:
+      my_test_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
+  registry:
+    type: file
+  config:
+    type: file
+  client:
+    tm:
+      # 全局事务默认超时（毫秒），超时后 TC 会主动回滚并释放全局锁
+      default-global-transaction-timeout: 60000
+
+# 库存服务地址：直连固定 URL，不依赖注册中心
+demo:
+  inventory:
+    url: http://127.0.0.1:8260
+  order:
+    unit-price: 10.00
+
+logging:
+  level:
+    io.seata: INFO
+    com.wkedong.springcloud.seata: INFO
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,loggers

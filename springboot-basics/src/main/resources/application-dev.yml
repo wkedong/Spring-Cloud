@@ -1,0 +1,13 @@
+# dev profile：开发调试用
+# 覆盖优先级：profile 文件 > 默认 application.yml；命令行参数与环境变量又高于两者
+basics:
+  environment: dev
+  audit:
+    prefix: "[BASICS-DEV-AUDIT]"
+    level: DEBUG
+
+logging:
+  level:
+    com.wkedong.springboot.basics: debug
+    org.hibernate.SQL: debug
+    org.hibernate.type.descriptor.sql.BasicBinder: trace

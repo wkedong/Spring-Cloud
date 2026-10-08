@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>springboot-basics</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>springboot-basics</name>
+    <description>Spring Boot 本体教学模块：Web 层工程化、配置体系、缓存/异步/事务、Actuator、优雅停机、测试</description>
+
+    <parent>
+        <groupId>com.wkedong.springcloud</groupId>
+        <artifactId>parent</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- 参数校验（JSR-303/Bean Validation），Boot 2.3+ 起不再随 web starter 传递引入 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- 数据访问：JPA + H2 内存库（教学用，零外部依赖；生产换 MySQL 只需改配置） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- 缓存抽象 + Caffeine 本地缓存实现 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+        <!-- AOP：审计切面示例 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <!-- Actuator：健康检查、指标、动态日志级别、优雅停机观测 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <!-- Micrometer → Prometheus 注册表：把 Actuator 指标按 Prometheus 文本格式暴露在 /actuator/prometheus
+             （版本由 spring-boot-dependencies 统一管理，不必写 version；Boot 2.7 对应 Micrometer 1.9.x） -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+        <!-- 本仓库自带的自定义 starter：演示「依赖即能力」的自动配置 -->
+        <dependency>
+            <groupId>com.wkedong.springcloud</groupId>
+            <artifactId>basics-audit-spring-boot-starter</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <!-- 分层打包（教学用）：java -Djarmode=layertools -jar xxx.jar list/extract -->
+                <configuration>
+                    <layers>
+                        <enabled>true</enabled>
+                    </layers>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

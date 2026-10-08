@@ -1,0 +1,56 @@
+server:
+  port: 8220
+
+spring:
+  application:
+    name: sentinel-demo
+  cloud:
+    sentinel:
+      # eager=true：应用启动就建立与控制台的连接并初始化，而不是等第一次请求才初始化。
+      # 教学场景下这个很重要——「第一个请求特别慢」是 Sentinel 懒加载的典型表现。
+      eager: true
+      transport:
+        # 与控制台通信的端口（客户端监听它，控制台反向拉取机器信息）。
+        # 为什么不写默认的 8719：dashboard 自己的「客户端命令中心」也监听 8719，
+        # 本机同时跑控制台时端口会冲突（现象是应用侧完全看不到 transport 日志）。
+        port: 8720
+        # 控制台地址（官方可执行 jar 默认 8080）。没启动控制台也不影响规则生效：
+        # 规则完全在客户端内存里，控制台只是观测/下发通道。
+        dashboard: 127.0.0.1:8080
+      # web 适配器：为每个 URL 自动建一个资源（形如 GET:/demo/qps），
+      # 这是「URL 资源被拦时走 BlockExceptionHandler」的前提
+      filter:
+        enabled: true
+  # Feign 与 Sentinel 整合：feign.sentinel.enabled=true 后，每个 Feign 方法调用
+  # 都会生成一个 Sentinel 资源，可以直接用限流/熔断规则保护远程调用
+feign:
+  sentinel:
+    enabled: true
+  client:
+    config:
+      default:
+        connectTimeout: 1000
+        # 读超时 1000ms：比 /downstream/slow 默认的 1200ms 小，用来稳定复现「远程调用超时降级」
+        readTimeout: 1000
+
+# 本模块自有的开关：系统规则会拦掉整个应用的入口流量，默认关闭，
+# 需要演示时用 GET /system/enable?enabled=true 打开
+sentinel:
+  system-rule-enabled: false
+  # 控制台地址（仅文档展示用，与上面 transport.dashboard 保持一致）
+  dashboard-url: http://127.0.0.1:8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,sentinel
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.wkedong.springcloud.sentinel: info
+    # 打开下面这行可以看到 Sentinel 每次进入资源的 debug 日志（排查「规则为什么没生效」时很有用）
+    # com.alibaba.csp.sentinel: debug

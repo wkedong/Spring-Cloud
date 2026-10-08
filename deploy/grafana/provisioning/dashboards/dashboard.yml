@@ -1,0 +1,34 @@
+# ============================================================================
+# Grafana 仪表盘 provisioning（教学用）：启动时从磁盘目录自动加载 dashboard JSON。
+# 配套文档：docs/27-指标监控与Grafana.md，使用说明：deploy/README.md
+#
+# 放置位置（Grafana 的 provisioning 根目录下的 dashboards/ 子目录）：
+#   容器：  /etc/grafana/provisioning/dashboards/dashboard.yml
+#   二进制：<自定 provisioning 目录>/dashboards/dashboard.yml，
+#          通过 cfg:default.paths.provisioning=<绝对路径> 指定该根目录
+#
+# options.path 必须是「绝对路径」。本文件用环境变量 ${SC_DASHBOARDS_PATH} 传进来，
+# 好处是仓库里的文件不用写死某一台机器的目录：
+#   export SC_DASHBOARDS_PATH="$PWD/deploy/grafana/dashboards"     # 启动 Grafana 前导出即可
+# 如果你的 Grafana 版本不支持在 provisioning 文件里插值环境变量（老版本 7.x 之前），
+# 就把下一行直接改成绝对路径，例如 /var/lib/grafana/dashboards 或本机实际目录。
+# ============================================================================
+apiVersion: 1
+
+providers:
+  - name: 'spring-cloud-teaching'
+    orgId: 1
+    # 仪表盘在 Grafana 里所属的文件夹名（不存在会自动创建）
+    folder: 'Spring Cloud 教学'
+    folderUid: 'sc-teaching'
+    type: file
+    # 禁止在 UI 里删除这些面板：provisioning 管理的资源以磁盘文件为准，
+    # 允许 UI 删除会造成「删了又回来」的困惑，所以教学环境直接关掉。
+    allowUiUpdates: false
+    disableDeletion: true
+    # 磁盘文件变更后重新扫描的间隔（秒）；设 0 需要重启 Grafana 才加载。
+    updateIntervalSeconds: 30
+    options:
+      path: ${SC_DASHBOARDS_PATH}
+      # 保留子目录结构（本目录当前是平铺的，写上便于以后分层：jvm/、http/、中间件/）
+      foldersFromFilesStructure: false

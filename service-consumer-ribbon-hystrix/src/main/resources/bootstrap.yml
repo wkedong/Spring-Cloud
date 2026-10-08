@@ -37,6 +37,11 @@ resilience4j:
         # 默认 1s；producer 的 /testHystrix 故意睡 5s，超时即触发 fallback
         timeout-duration: 3s
         cancel-running-future: true
+    instances:
+      # 超时演示专用：给 /resilience/timelimiter 用 1s 的短超时
+      slowCall:
+        timeout-duration: 1s
+        cancel-running-future: true
   circuitbreaker:
     configs:
       default:
@@ -44,3 +49,42 @@ resilience4j:
         sliding-window-size: 10 #滑动窗口统计 10 次调用
         failure-rate-threshold: 50 #失败率阈值 50% 打开熔断
         wait-duration-in-open-state: 10s #熔断打开后等待 10s 进入半开
+    instances:
+      slowCall:
+        sliding-window-size: 10
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 5s
+      decoratedDemo:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+  # ==================== 全家桶其余成员（docs/20） ====================
+  retry:
+    configs:
+      default:
+        max-attempts: 3 #最多尝试 3 次（含第一次）
+        wait-duration: 200ms #每次重试间隔（可配指数退避）
+        retry-exceptions:
+          - java.lang.IllegalStateException
+          - org.springframework.web.client.ResourceAccessException
+    instances:
+      decoratedRetry:
+        max-attempts: 2
+        wait-duration: 100ms
+  bulkhead:
+    configs:
+      default:
+        max-concurrent-calls: 2 #同时只允许 2 个并发
+        max-wait-duration: 0 #不等待，满了直接拒绝（BulkheadFullException）
+    instances:
+      decoratedBulkhead:
+        max-concurrent-calls: 5
+  ratelimiter:
+    configs:
+      default:
+        limit-for-period: 3 #每个周期允许 3 次
+        limit-refresh-period: 10s #周期长度 10 秒
+        timeout-duration: 0 #不等待，直接拒绝（RequestNotPermitted）
+

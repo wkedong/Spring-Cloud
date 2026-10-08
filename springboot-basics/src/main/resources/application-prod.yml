@@ -1,0 +1,37 @@
+# prod profile：生产形态示例（--spring.profiles.active=prod 观察差异）
+# 1) 日志收敛到 WARN/INFO 并落文件（配合 logback-spring.xml 的 prod 分支）
+# 2) 关闭 H2 控制台、收紧 Actuator 暴露面
+# 3) 不允许 ddl-auto 自动改表
+basics:
+  environment: prod
+  features:
+    cache-demo: true
+    async-demo: false
+    tx-demo: true
+
+server:
+  tomcat:
+    threads:
+      max: 50
+
+spring:
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    root: warn
+    com.wkedong.springboot.basics: info

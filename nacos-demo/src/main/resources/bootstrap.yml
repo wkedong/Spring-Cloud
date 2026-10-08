@@ -1,0 +1,50 @@
+# =============================================================================
+# bootstrap.yml —— Nacos 教学模块的「引导期」配置
+#
+# 为什么是 bootstrap 而不是 application？
+#   Nacos 的 dataId 要在「计算配置从哪来」的阶段就定下来：
+#     dataId = ${spring.application.name}[-${profile}].${file-extension}
+#   这个阶段比 application.yml 更早，只有 bootstrap 上下文能看到。
+#   而 Spring Boot 2.4 起默认不再创建 bootstrap 上下文，必须引入
+#   spring-cloud-starter-bootstrap（见 pom.xml 注释），本文件才会被加载。
+#
+# 本文件里刻意保留了两处「教学坑位」：
+#   1) spring.profiles.active 必须写在这里（或命令行），否则 nacos-demo-dev.properties 不会被拉取；
+#   2) import-check 开关的含义见 docs 的「踩坑对照」。
+# =============================================================================
+server:
+  port: 8210
+
+spring:
+  application:
+    name: nacos-demo          # 决定默认 dataId 前缀：nacos-demo.properties
+  profiles:
+    active: dev               # 必须在 bootstrap 阶段可见，才会额外拉取 nacos-demo-dev.properties
+  cloud:
+    nacos:
+      # ---------- 注册中心 ----------
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: ""         # 留空 = public 命名空间；填命名空间 ID 即注册到隔离环境
+        group: DEFAULT_GROUP  # 分组：同一命名空间内的二级隔离，跨组默认不可发现
+        metadata:
+          from: nacos-demo-teaching          # 自定义元数据，会出现在实例列表里
+          # 元数据是「静态」的：多实例要按实例覆盖，见执行命令里的
+          # --spring.cloud.nacos.discovery.metadata.instance-port=8211
+          instance-port: "8210"
+      # ---------- 配置中心 ----------
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: properties   # dataId 后缀；默认 dataId = nacos-demo.properties
+        group: DEFAULT_GROUP
+        namespace: ""                # 与注册中心同理；public 用空串表示
+        refresh-enabled: true        # 打开长轮询推送 → 配置变更自动触发 RefreshEvent
+        # 已经用 bootstrap starter，引导检查天然通过；此处显式关掉只为说明这个开关存在
+        # （不加 bootstrap starter 且不写 spring.config.import 时，它会以启动失败的方式提醒你）
+        import-check:
+          enabled: false
+        # 共享配置：多应用共用的 dataId，优先级低于「应用自己的」配置（实测见 docs）
+        shared-configs:
+          - data-id: nacos-demo-shared.properties
+            group: DEFAULT_GROUP
+            refresh: true

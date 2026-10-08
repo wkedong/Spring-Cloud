@@ -1,5 +1,13 @@
-spring:
-  profiles:
-    active: peer1
+# peer1 实例：端口 6070，注册元数据 version=v1（用于负载均衡/灰度路由教学）
+# ⚠️ Boot 2.4+ 配置数据规则：**profile 特定文件里不允许再声明 spring.profiles.active**，
+#    旧写法会导致启动失败：InvalidConfigDataPropertyException:
+#    Property 'spring.profiles.active' imported from location ... is invalid in a profile specific resource
+#    正确做法：用命令行 --spring.profiles.active=peer1 激活（或在非 profile 特定文件里用
+#    spring.config.activate.on-profile）。
 server:
   port: 6070
+eureka:
+  instance:
+    metadata-map:
+      version: v1
+      zone: zone-a

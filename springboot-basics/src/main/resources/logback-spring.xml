@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  日志配置（教学示例）：
+  1. 文件名 logback-spring.xml 才支持 <springProfile>；叫 logback.xml 会被 Logback 先加载，
+     拿不到 Spring 的 profile 信息；
+  2. 日志格式里带上 %X{traceId}：值由 TraceIdFilter 写入 MDC，一个请求的所有日志可串联；
+  3. dev 只打控制台（方便看），prod 同时落文件并滚动归档（磁盘可控）。
+-->
+<configuration>
+    <property name="CONSOLE_PATTERN"
+              value="%d{HH:mm:ss.SSS} %highlight(%-5level) [%thread] [%X{traceId:-no-trace}] %cyan(%logger{36}) - %msg%n"/>
+    <property name="FILE_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [%X{traceId:-no-trace}] %logger{36} - %msg%n"/>
+
+    <!-- 开发/测试：只输出到控制台 -->
+    <springProfile name="!prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${CONSOLE_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- 生产：控制台 + 滚动文件 -->
+    <springProfile name="prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder>
+                <pattern>${CONSOLE_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/springboot-basics.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/springboot-basics.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>10MB</maxFileSize>
+                <maxHistory>7</maxHistory>
+                <totalSizeCap>500MB</totalSizeCap>
+            </rollingPolicy>
+            <encoder>
+                <pattern>${FILE_PATTERN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+        </root>
+    </springProfile>
+</configuration>

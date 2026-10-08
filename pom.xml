@@ -20,6 +20,8 @@
     <properties>
         <java.version>1.8</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Spring Cloud Alibaba 与 Spring Cloud 2021.0.x 对应的版本线 -->
+        <spring-cloud-alibaba.version>2021.0.5.0</spring-cloud-alibaba.version>
     </properties>
 
     <modules>
@@ -43,6 +45,20 @@
         <module>service-consumer-ribbon</module>
         <!-- 带有熔断机制的消费者-->
         <module>service-consumer-ribbon-hystrix</module>
+        <!-- Spring Boot 本体教学：Web 层工程化、配置体系、缓存/异步/事务、Actuator、优雅停机、测试 -->
+        <module>springboot-basics</module>
+        <!-- 自定义 Spring Boot Starter：自动配置原理教学（被 springboot-basics 依赖） -->
+        <module>basics-audit-spring-boot-starter</module>
+        <!-- Nacos：注册中心与配置中心（替代 Eureka + Config 的新一代方案） -->
+        <module>nacos-demo</module>
+        <!-- Sentinel：流量控制与熔断降级（Alibaba 系容错方案） -->
+        <module>sentinel-demo</module>
+        <!-- Spring Cloud Stream：消息驱动微服务（Kafka Binder） -->
+        <module>stream-demo</module>
+        <!-- Spring Security + JWT：认证与授权 -->
+        <module>security-demo</module>
+        <!-- Seata：分布式事务（AT 模式） -->
+        <module>seata-demo</module>
     </modules>
 
 
@@ -52,6 +68,14 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-dependencies</artifactId>
                 <version>2021.0.9</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Spring Cloud Alibaba：Nacos / Sentinel / Seata 的版本管理 -->
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

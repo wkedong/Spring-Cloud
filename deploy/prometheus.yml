@@ -1,0 +1,120 @@
+# ============================================================================
+# Prometheus 抓取配置（教学用）——配套文档：docs/27-指标监控与Grafana.md
+#
+# 启动（本机二进制，非 Docker，监听 19090，避免与共享实例的 9090 冲突）：
+#   prometheus --config.file=deploy/prometheus.yml \
+#              --storage.tsdb.path=/tmp/sc-prom-data \
+#              --web.listen-address=127.0.0.1:19090
+# 配置校验（改完先校验再重启，否则 Prometheus 会拒绝加载并在日志里报错）：
+#   promtool check config deploy/prometheus.yml
+#
+# 前提：被采集的应用必须满足两个条件，缺一个就是 404 或空响应——
+#   ① pom 里有 io.micrometer:micrometer-registry-prometheus
+#   ② management.endpoints.web.exposure.include 里包含 prometheus
+# ============================================================================
+
+global:
+  # 全局抓取间隔：job 未单独覆盖时生效。每次抓取都是一次真实的 HTTP GET，
+  # 间隔越小数据越细但压力越大（15s 抓一天 ≈ 5760 次/目标）。
+  scrape_interval: 15s
+  # 告警规则（rule_files）的求值间隔。它只决定「多久算一次规则」，与抓取是两件事，
+  # 所以可以比 scrape_interval 大（例如 1m）而不影响曲线精度。
+  evaluation_interval: 15s
+  # 单次抓取超时，必须 < scrape_interval，否则未完成的抓取会不断堆积。
+  scrape_timeout: 10s
+  # external_labels（外部标签）：写入本 Prometheus 产生的所有样本/告警，
+  # 用于多环境、多集群 federation 合并时区分来源。它不会覆盖被抓取指标自带的同名标签。
+  external_labels:
+    env: local
+    cluster: teaching
+
+scrape_configs:
+  # ------------------------------------------------------------------ 业务应用
+  # 一个 job 抓所有 Spring Cloud 模块：它们的指标格式完全一致（Micrometer 统一门面），
+  # 区别只体现在标签上，所以没必要为每个模块建一个 job。
+  - job_name: 'spring-cloud-apps'
+    # Actuator + micrometer-registry-prometheus 的拉取端点。
+    # 注意不是 /actuator/metrics：后者是 JSON 调试格式，Prometheus 只认文本 exposition 格式。
+    metrics_path: '/actuator/prometheus'
+    # 覆盖全局：教学时段短，抓勤一点，Grafana 曲线更快出形状。
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    # honor_labels: false（默认，也是本教学用的取值）时，若「目标标签」与「指标自带标签」同名，
+    # 以指标自带的为准，冲突的目标标签会被改名成 exported_<name>。
+    # 实测可见（curl .../api/v1/query?query=http_server_requests_seconds_count 的返回里同时有
+    #   application="springboot-basics" 与 exported_application="springboot-basics"）：
+    # 这里两边取值相同所以不影响查询，但会白白多占一个标签。若改成 true 则由目标标签覆盖指标标签，
+    # 风险是「指标自带的真实来源」被抹掉（多实例共用一个 target 时会串数据）。
+    honor_labels: false
+    # metric_relabel_configs 在「抓取成功后、写库之前」逐条样本改写/丢弃标签，是控制基数的主要手段。
+    metric_relabel_configs:
+      # 把上面那个由 Prometheus 生成的冗余标签丢掉：查询语义不变，series 更省。
+      - action: labeldrop
+        regex: 'exported_application'
+    static_configs:
+      # 每个 target 单独一个 labels 块：把「服务名」做成 target 标签，
+      # 好处是实例挂掉（up=0）时该标签依然存在，Grafana 的变量下拉不会因为服务下线而消失。
+      - targets: ['127.0.0.1:18010']
+        labels:
+          application: 'springboot-basics'   # 实测端口（默认 8010，本仓库实测用 18010 避开端口冲突）
+      - targets: ['127.0.0.1:6070', '127.0.0.1:6080', '127.0.0.1:6090']
+        labels:
+          application: 'service-producer'    # peer1/peer2/peer3 三实例
+      - targets: ['127.0.0.1:7010']
+        labels:
+          application: 'service-consumer'
+      - targets: ['127.0.0.1:7020']
+        labels:
+          application: 'service-consumer-feign'
+      - targets: ['127.0.0.1:7030']
+        labels:
+          application: 'service-consumer-ribbon'
+      - targets: ['127.0.0.1:7040']
+        labels:
+          application: 'service-consumer-ribbon-hystrix'
+      - targets: ['127.0.0.1:6050']
+        labels:
+          application: 'zuul-gateway'
+      - targets: ['127.0.0.1:8210']
+        labels:
+          application: 'nacos-demo'
+      - targets: ['127.0.0.1:8220']
+        labels:
+          application: 'sentinel-demo'
+      - targets: ['127.0.0.1:8230']
+        labels:
+          application: 'stream-demo'
+      - targets: ['127.0.0.1:8240']
+        labels:
+          application: 'security-demo'
+
+  # -------------------------------------------------------------------- 自监控
+  # Prometheus 自己也暴露 /metrics（注意：是 /metrics，不是 /actuator/prometheus）。
+  # 端口要与 --web.listen-address 一致；若你把本文件用在 9090 的实例上，这里改成 9090。
+  - job_name: 'prometheus-self'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['127.0.0.1:19090']
+        labels:
+          application: 'prometheus'
+
+  # ------------------------------------------------------------------ 选配示例
+  # Nacos 2.x 自带 Actuator，但默认没有暴露 prometheus 端点，需要在
+  # nacos/conf/application.properties 打开 management.endpoints.web.exposure.include=prometheus 再重启；
+  # 未打开时这个 target 会一直 404（表现为 up=1 但 scrape_samples_scraped=0 或 up 直接为 0）。
+  #
+  # - job_name: 'nacos'
+  #   metrics_path: '/nacos/actuator/prometheus'
+  #   static_configs:
+  #     - targets: ['127.0.0.1:8848']
+  #       labels:
+  #         application: 'nacos'
+
+  # 丢弃高基数/无用的自抓取序列（教学演示：真正跑起来前先想清楚要丢什么）。
+  # /actuator/prometheus 自己每次被抓都会产生一条 uri="/actuator/prometheus" 的 HTTP 指标，
+  # 它会稳定占用一条时间线且没有分析价值。取消注释即可生效：
+  #
+  #   metric_relabel_configs:
+  #     - source_labels: [uri]
+  #       regex: '/actuator/prometheus'
+  #       action: drop

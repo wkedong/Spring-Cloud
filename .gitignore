@@ -1,4 +1,4 @@
-/target/
+target/
 !.mvn/wrapper/maven-wrapper.jar
 
 ### STS ###
@@ -23,3 +23,5 @@
 /dist/
 /nbdist/
 /.nb-gradle/
+# 合规扫描产物（本地生成，不入库）
+compliance-reports/

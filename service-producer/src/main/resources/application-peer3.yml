@@ -1,5 +1,9 @@
-spring:
-  profiles:
-    active: peer3
+# peer3 实例：端口 6090，注册元数据 version=v3
+# ⚠️ 与 peer1 同理：profile 特定文件里不能写 spring.profiles.active，靠命令行激活
 server:
   port: 6090
+eureka:
+  instance:
+    metadata-map:
+      version: v3
+      zone: zone-c
