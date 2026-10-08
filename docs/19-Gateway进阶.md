@@ -3,14 +3,14 @@
 
 ## 学什么
 
-06 篇讲「Zuul 1.x 怎么迁到 Spring Cloud Gateway、路由怎么配」；本篇讲网关真正承担职责的三件事：**入口鉴权、入口限流、失败重试**——都靠 `GlobalFilter` + `Ordered` 实现。过滤器链是请求进入系统的唯一一层公共切面，链上顺序即语义；模块目录仍叫 `zuul`（配置键已从 `zuul.routes.*` 迁到 `spring.cloud.gateway.routes.*`，包名也从 `...springcloud.zuul` 改成 `...springcloud.gateway`），看日志时别被它迷惑。
+06 篇讲「Zuul 1.x 怎么迁到 Spring Cloud Gateway、路由怎么配」；本篇讲网关真正承担职责的三件事：**入口鉴权、入口限流、失败重试**——都靠 `GlobalFilter` + `Ordered` 实现。过滤器链是请求进入系统的唯一一层公共切面，链上顺序即语义；模块目录仍叫 `zuul`（配置键已从 `zuul.routes.*` 迁到 `spring.cloud.gateway.server.webflux.routes.*`——**2025.1 起整棵配置树比 2021.0 时代又下移了一层**，包名也从 `...springcloud.zuul` 改成 `...springcloud.gateway`），看日志时别被它迷惑。
 
 | 生产问题 | 本篇机制 | 本模块实现 |
 | --- | --- | --- |
 | 每个服务都要自己校验 token | `GlobalFilter` + 负值 `Ordered` | `zuul/.../gateway/filter/AuthGlobalFilter.java`（-100） |
 | 某个调用方把后端打满 | 入口限流（单机固定窗口） | `zuul/.../gateway/filter/InMemoryRateLimitGlobalFilter.java`（-90） |
 | 下游偶发 5xx 就整条链路失败 | 路由级 `Retry` 过滤器 | `zuul/src/main/resources/application.yml` 的 `service-producer-retry` |
-| 前端跨域要到处配 | `spring.cloud.gateway.globalcors` | 同上 |
+| 前端跨域要到处配 | `spring.cloud.gateway.server.webflux.globalcors` | 同上 |
 | 下游不知道「调用者是谁」 | 鉴权通过后注入内部头 | 网关下发 `X-User-Id` / `X-User-From` |
 
 ## 核心代码
@@ -58,8 +58,11 @@ exchange.getResponse().beforeCommit(() -> {                // ← 提交前写�
 ### 3. 路由表、Retry 过滤器与全局 CORS
 
 ```yaml
-spring.cloud.gateway:
-  discovery.locator.enabled: true            # 自动生成「裸路由」/service-producer/**
+# 2025.1 的写法：starter 更名 spring-cloud-starter-gateway-server-webflux，
+# 配置前缀从 spring.cloud.gateway.* 下移到 spring.cloud.gateway.server.webflux.*
+# （旧前缀在新版本里不会报错，只是静默不生效——路由、CORS、httpclient 配置全部「消失」）
+spring.cloud.gateway.server.webflux:
+  discovery.locator.enabled: true            # 自动生成「裸路由」/service-producer/**，注意是小写服务名
   routes:
     - { id: service-producer, uri: "lb://service-producer", predicates: ["Path=/api/producer/**"], filters: ["StripPrefix=2"] }
     - id: service-producer-retry             # 只对 5xx 重试、只重试幂等 GET；retries=2 → 最多 3 次请求
@@ -69,7 +72,9 @@ spring.cloud.gateway:
   globalcors: { add-to-simple-url-handler-mapping: true, cors-configurations: { "[/**]": { allowedOriginPatterns: "*", allowCredentials: true, maxAge: 3600 } } }
   httpclient: { connect-timeout: 2000, response-timeout: 10s }
 gateway: { auth.token: dev-token, ratelimit: { capacity: 10, window-seconds: 10 } }   # 两个自定义过滤器读的配置
-management.endpoint.gateway.enabled: true    # 不开这个开关，/actuator/gateway/routes 直接 404
+# Gateway 5 已删除 management.endpoint.gateway.enabled，改成访问级别开关：
+# read-only（可查路由）/ unrestricted（还能改路由）/ none（关掉，/actuator/gateway/routes 直接 404）
+management.endpoint.gateway.access: read-only
 ```
 
 ## 关键机制与易错点

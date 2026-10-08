@@ -2,8 +2,8 @@ package com.wkedong.springboot.basics.health;
 
 import com.wkedong.boot.audit.AuditLogger;
 import com.wkedong.springboot.basics.config.BasicsProperties;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 

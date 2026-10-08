@@ -1,13 +1,15 @@
 package com.wkedong.springboot.basics.web;
 
 import com.wkedong.springboot.basics.config.BasicsProperties;
+import com.wkedong.springboot.basics.config.CacheConfig;
 import com.wkedong.springboot.basics.domain.User;
 import com.wkedong.springboot.basics.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -24,16 +26,30 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 教学点：
  * <ul>
- *   <li>依赖用 {@code @MockBean} 替换，测试只关心「请求进 → 响应出」的行为；</li>
+ *   <li>依赖用 {@code @MockitoBean} 替换（Boot 3.4 起 {@code @MockBean} 已废弃、Boot 4 已删除），
+ *       测试只关心「请求进 → 响应出」的行为；</li>
  *   <li>MockMvc 不经过真实网络，但会走完整的 Filter → Interceptor → ControllerAdvice 链路，
  *       所以能验证鉴权与统一异常处理；</li>
  *   <li>本模块的 BasicsProperties 不在切片范围内，需要显式 {@code @EnableConfigurationProperties} 引入。</li>
  * </ul>
  *
+ * 升级要点（Boot 4 / Framework 7）：
+ * <ol>
+ *   <li>{@code @WebMvcTest} 换了包名（{@code org.springframework.boot.webmvc.test.autoconfigure}），
+ *       它所在的 spring-boot-webmvc-test 模块也不再被 spring-boot-starter-test 传递依赖，需显式声明；</li>
+ *   <li>{@code @MockBean} 已删除，改用 {@code @MockitoBean}；</li>
+ *   <li>缓存切面在 Framework 7 里启动即校验 CacheManager，切片测试必须 {@code @Import} 真实的缓存配置
+ *       （旧版本是延迟到首次调用才报错，所以这个坑以前看不出来）。</li>
+ * </ol>
+ *
  * @author wkedong
  */
 @WebMvcTest(controllers = {UserController.class, DemoController.class})
 @EnableConfigurationProperties(BasicsProperties.class)
+// 切片不加载 @Configuration（WebMvcTypeExcludeFilter 会滤掉 CacheConfig），
+// 而主类上的 @EnableCaching 让缓存切面必须在启动时就拿到 CacheManager：
+// Spring Framework 7 起这里由「延迟报错」变成「启动即失败」，切片测试要把缺失的基础设施显式补上。
+@Import(CacheConfig.class)
 class UserControllerTest {
 
     private static final String TOKEN_HEADER = "X-Token";
@@ -42,7 +58,7 @@ class UserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private UserService userService;
 
     @Test

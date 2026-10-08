@@ -1,17 +1,18 @@
 package com.wkedong.springcloud.sentinel.handler;
 
-import com.alibaba.csp.sentinel.adapter.spring.webmvc.callback.BlockExceptionHandler;
+import com.alibaba.csp.sentinel.adapter.spring.webmvc_v6x.callback.BlockExceptionHandler;
 import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.csp.sentinel.slots.block.degrade.DegradeException;
 import com.alibaba.csp.sentinel.slots.block.flow.FlowException;
 import com.alibaba.csp.sentinel.slots.block.flow.param.ParamFlowException;
 import com.alibaba.csp.sentinel.slots.system.SystemBlockException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.wkedong.springcloud.sentinel.web.ApiResponse;
 import org.springframework.stereotype.Component;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -30,6 +31,9 @@ import java.util.Map;
  * 但对前端不友好（要额外判断 Content-Type）。这里保留 429 状态码，
  * 同时把响应体换成与其它接口一致的 JSON，并带上「是哪一类规则拦的」。
  * <p>
+ * 注意：Sentinel 1.8.9 的 Spring 6 适配器包名是 {@code ...webmvc_v6x.callback}（旧包 {@code ...webmvc.callback}
+ * 是 javax 版），{@code handle} 也比旧接口多一个「资源名」参数——升级时的两处硬改动。
+ * <p>
  * 想看默认文本效果？把本类上的 {@code @Component} 注释掉重启即可——
  * 文档「动手验证」一节记录的就是默认实现的输出。
  *
@@ -38,10 +42,11 @@ import java.util.Map;
 @Component
 public class SentinelBlockExceptionHandler implements BlockExceptionHandler {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    /** Jackson 3（Boot 4 默认）：包名 tools.jackson；JsonMapper 为不可变构建器风格 */
+    private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
     @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response, BlockException e) throws IOException {
+    public void handle(HttpServletRequest request, HttpServletResponse response, String resourceName, BlockException e) throws IOException {
         // 被拦不是「系统坏了」，而是「现在不接」：用 429 Too Many Requests 语义最准确，
         // 同时保证客户端能从 Retry-After / 响应体里知道该怎么办
         response.setStatus(429);
@@ -49,11 +54,17 @@ public class SentinelBlockExceptionHandler implements BlockExceptionHandler {
         response.setCharacterEncoding("UTF-8");
 
         Map<String, Object> data = new LinkedHashMap<>();
-        // 不用三元表达式：显式分支
+        // 不用三元表达式：显式分支（工程红线，历史上这里被合规检查点过一次，升级适配 v6x 的
+        // 4 参 handle() 时新增 resourceName 参数，务必继续用 if/else 而不是 ? :）
         // 为什么要判空：SystemBlockException 这类异常是用「只传 limitApp」的构造函数造的，
         // 父类 rule 字段为 null（Sentinel 1.8.6 的 LogSlot 正是因此抛 NPE），这里必须防住
         if (e.getRule() == null) {
-            data.put("resource", request.getRequestURI());
+            // v6x 适配器会把 URL 资源名作为第 3 个参数传进来；为空时退回真实请求 URI
+            if (resourceName == null) {
+                data.put("resource", request.getRequestURI());
+            } else {
+                data.put("resource", resourceName);
+            }
         } else {
             data.put("resource", e.getRule().getResource());
         }

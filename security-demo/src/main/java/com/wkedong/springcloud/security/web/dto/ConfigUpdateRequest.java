@@ -1,6 +1,6 @@
 package com.wkedong.springcloud.security.web.dto;
 
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 
 /**
  * 管理员写操作（POST /api/admin/config）的请求体。

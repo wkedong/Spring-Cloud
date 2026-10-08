@@ -99,9 +99,10 @@ scrape_configs:
           application: 'prometheus'
 
   # ------------------------------------------------------------------ 选配示例
-  # Nacos 2.x 自带 Actuator，但默认没有暴露 prometheus 端点，需要在
+  # Nacos 3.x 自带 Actuator，但默认没有暴露 prometheus 端点，需要在
   # nacos/conf/application.properties 打开 management.endpoints.web.exposure.include=prometheus 再重启；
   # 未打开时这个 target 会一直 404（表现为 up=1 但 scrape_samples_scraped=0 或 up 直接为 0）。
+  # 另注意 Nacos 3.x 的 API 端口仍是 8848、控制台在 8080，actuator 挂在 API 端口下。
   #
   # - job_name: 'nacos'
   #   metrics_path: '/nacos/actuator/prometheus'

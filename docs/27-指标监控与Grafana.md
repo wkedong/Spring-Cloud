@@ -1,7 +1,8 @@
 # 27 · 指标监控与 Grafana（Micrometer + Prometheus）
 
-> 模块：`springboot-basics/`（18010）+ `deploy/`（抓取与仪表盘部署物）。实测环境：Boot 2.7.18 /
-> Micrometer 1.9.17 / Prometheus 3.15.0 / Grafana 13.2.3（macOS，无 Docker）；自建 19090/19300，共享 9090/3000 未动。
+> 模块：`springboot-basics/`（18010）+ `deploy/`（抓取与仪表盘部署物）。实测环境：Boot **4.0.8** /
+> micrometer-core **1.16.7** / Prometheus 3.15.0 / Grafana 13.2.3（macOS，无 Docker）；自建 19090/19300，共享 9090/3000 未动。
+> 抓取目标清单见 `deploy/prometheus.yml`，与仓库现有端口一一对应。
 
 ## 学什么
 
@@ -120,8 +121,12 @@ scrape_configs:
 ## 动手验证
 
 ```bash
-# ① 起实例（自带 H2，无外部依赖）：实测 3.2s 就绪，PID 82189；日志里
+# ① 起实例（自带 H2，无外部依赖）：下面这行是升级前存档——实测 3.2s 就绪，PID 82189；日志里
 #    Tomcat started on port(s): 18010 (http) / Started SpringBootBasicsApplication in 2.6 seconds
+#    ↑ Boot 4 的日志文本已经变了（Tomcat 11 + Boot 4 的 WebServer 实现）：
+#      "Tomcat started on port <端口> (http) with context path '/'"、
+#      "Started SpringBootBasicsApplication in 9.137 seconds (process running for 10.289)"
+#      ——只看「端口对不对、有没有 Started」，别死记字符串（耗时随机器负载变化）
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)
 java -jar springboot-basics/target/springboot-basics-0.0.1-SNAPSHOT.jar --server.port=18010 &
 

@@ -28,12 +28,7 @@
              注意本模块不能引入 spring-boot-starter-web，否则 Servlet/Reactive 冲突启动失败） -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-gateway</artifactId>
-        </dependency>
-        <!-- Boot 2.4+ 默认不再加载 bootstrap.yml，保留 bootstrap 配置方式需显式引入 -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-bootstrap</artifactId>
+            <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
         </dependency>
         <!-- eureka.client.healthcheck.enabled 依赖 actuator（其他模块经 eureka-server starter 传递引入，
              本模块只有 eureka-client，必须显式引入），同时暴露 /actuator/circuitbreakers 等观察端点 -->

@@ -33,8 +33,10 @@ import org.springframework.security.web.SecurityFilterChain;
  * <p>
  * 本类里最值得逐行看的是 {@link #securityFilterChain} 上的注释。
  * <p>
- * 方法级鉴权开关 {@code @EnableGlobalMethodSecurity(prePostEnabled = true)} 写在启动类
- * {@code SecurityDemoApplication} 上（5.7 的写法；6.x 更名为 {@code @EnableMethodSecurity}）。
+ * 方法级鉴权开关写在启动类 {@code SecurityDemoApplication} 上：
+ * 5.7 是 {@code @EnableGlobalMethodSecurity(prePostEnabled = true)}，
+ * Spring Security 6 起更名 {@code @EnableMethodSecurity}，
+ * <b>7.0 直接移除了旧注解</b>（启动即失败，见启动类的升级注释）。
  *
  * @author wkedong
  */
@@ -178,11 +180,11 @@ public class SecurityConfig {
                 // ---------- 4) 授权规则：从上到下第一条命中即生效 ----------
                 .authorizeHttpRequests(auth -> auth
                         // 登录接口必须放行，否则「没令牌 → 登录 → 拿令牌」死循环
-                        .antMatchers("/auth/**", "/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/auth/**", "/actuator/health", "/actuator/info").permitAll()
                         // 公开只读接口放行（只放 GET，写操作仍需认证）
-                        .antMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
                         // 管理员区：URL 级第一道闸（hasRole('ADMIN') 实际比对权限 ROLE_ADMIN）
-                        .antMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 其余一律要求「已认证」，具体细粒度再交给方法级 @PreAuthorize
                         .anyRequest().authenticated())
 

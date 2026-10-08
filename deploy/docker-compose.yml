@@ -24,7 +24,8 @@ name: spring-cloud-demo
 
 # -----------------------------------------------------------------------------
 # 共用片段：所有「要注册到 Eureka + 从 Config 拉配置」的业务服务都用这一份。
-# bootstrap.yml 里写的是 localhost:6060 / localhost:6010，容器里 localhost 指向
+# 模块的 application.yml 里写的是 localhost:6060 / localhost:6010（Boot 4 已无
+# bootstrap.yml，配置中心改由 spring.config.import 接入），容器里 localhost 指向
 # 容器自己，所以必须用环境变量覆盖（Spring Boot relaxed binding）：
 #   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE ← eureka.client.serviceUrl.defaultZone
 #   SPRING_CLOUD_CONFIG_URI              ← spring.cloud.config.uri
@@ -32,8 +33,9 @@ name: spring-cloud-demo
 x-cloud-env: &cloud-env
   EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:6060/eureka/
   SPRING_CLOUD_CONFIG_URI: http://config:6010/
-  # 只给真正引了 sleuth-zipkin 的模块加这行才有效果（producer / consumer / feign / ribbon / hystrix）
-  SPRING_ZIPKIN_BASE_URL: http://zipkin:9411
+  # 只给真正引了 spring-boot-starter-zipkin 的模块加这行才有效果（producer / consumer / feign / ribbon / hystrix）
+  # 键名随 Sleuth 退役一起改了：旧的 SPRING_ZIPKIN_BASE_URL / SPRING_ZIPKIN_BASEURL 已失效（写了不再生效）
+  MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
 
 x-build: &build
   context: ..

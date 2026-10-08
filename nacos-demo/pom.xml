@@ -38,14 +38,9 @@
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
-        <!-- Nacos 配置中心（Boot 2.4+ 需要 bootstrap starter 才加载 bootstrap.yml） -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-bootstrap</artifactId>
         </dependency>
         <!-- 负载均衡：用 RestTemplate + @LoadBalanced 演示按服务名调用 -->
         <dependency>

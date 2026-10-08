@@ -22,8 +22,9 @@ META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
 META-INF/spring.factories                                                         ← 旧写法，key 是 EnableAutoConfiguration
 ```
 
-`spring.factories` 是 Boot 1.x~2.6 的唯一方式，**2.7 仍兼容**（本仓库 2.7.18 就是这么跑通的），3.0 起彻底
-移除、只认 `imports`。**两者同时写不会重复装配**：Boot 读两处并去重，本 starter 保留两份只为新旧对照。
+`spring.factories` 是 Boot 1.x~2.6 的唯一方式，2.7 兼容，**3.0 起彻底移除、只认 `imports`**——本仓库升级到
+Boot 4.0.8 后自动配置注册只认 `imports` 文件，`spring.factories` 里那一行已不被读取（保留只为新旧对照）。
+**两者同时写不会重复装配**：2.7 时代 Boot 会读两处并去重；Boot 4 只读 `imports`，`spring.factories` 写了也不生效。
 迁移就三步：新建 `imports` → 删掉 `spring.factories` 里那一项 →（为兼容旧 Boot 客户）临时保留。
 
 ## 核心代码

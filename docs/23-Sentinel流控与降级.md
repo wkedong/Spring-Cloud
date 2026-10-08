@@ -1,6 +1,7 @@
 # 23 · Sentinel：流控与熔断降级
 
 > 模块：`sentinel-demo/`（8220）。无需注册中心，单机可跑。
+> 组件版本：Sentinel **1.8.9**（客户端，随 Spring Cloud Alibaba 2025.1.0.0）；Web 适配器为 v6x 包（见「关键机制」）。
 > 与 [05-服务容错保护](05-服务容错保护.md) 是同一问题的两条路线：05 讲 Resilience4j（Spring 官方抽象），本篇讲 Sentinel（阿里系），末尾有对照表。
 
 ## 学什么
@@ -108,11 +109,27 @@ public interface FeignDownstream { ... }
   1s 窗口的 10 个样本，所以演示要用**并发**打满窗口。生产取多大，是「多快对下跌做出反应」与
   「样本量是否足够」的权衡。
 - **URL 资源名在不同版本里不一样，写错就「规则加载成功但永不命中」**。本模块实测：
-  Spring Cloud Alibaba 2021.x 注册的是 `SentinelWebInterceptor`（urlPatterns = `/**`），
+  Spring Cloud Alibaba（当前栈 2025.1.0.0，旧版 2021.x 行为相同）注册的是 `SentinelWebInterceptor`（urlPatterns = `/**`），
   它建的资源名是**纯路径**（`/system/probe`）；而老教程里常见的 `GET:/path` 命名来自
   早期的 `CommonFilter`。**不确定时看 `/sentinel/status` 打出的资源清单**，那是真实值。
   另外 `FlowRuleManager.loadRules()` 是**整体替换**而不是追加——直接 load 一条新规则会把启动时加载的
   三条流控规则全部冲掉（`/system/url-rule` 里做了合并，可参考它的写法）。
+
+### Web 适配器升级：v6x 包名与 4 参 handle（Sentinel 1.8.9）
+
+Sentinel 1.8.9 的 Spring 6/7 Web 适配器包名是 **`com.alibaba.csp.sentinel.adapter.spring.webmvc_v6x`**
+（旧包 `...adapter.spring.webmvc` 是 `javax` 版）。要给「URL 层被拦」定制兜底响应，实现的是
+`com.alibaba.csp.sentinel.adapter.spring.webmvc_v6x.callback.BlockExceptionHandler`，它的 `handle` 是 **4 参**：
+
+```java
+public void handle(HttpServletRequest request, HttpServletResponse response,
+                   String resourceName, BlockException e) throws IOException   // 比旧接口多一个「资源名」
+```
+
+——**包名 + 方法签名是升级时的两处硬改动**，漏一处就编译不过。本模块的 `SentinelBlockExceptionHandler`
+实现了它：URL 资源在进入 Controller 之前被拦时，直接回 **HTTP 429 + 与其它接口一致的 JSON**（含资源名与
+`blockType`），而不是默认的纯文本 `Blocked by Sentinel (flow limiting)`。实测：给 `/system/probe` 加
+QPS=2 的 URL 规则后，前 2 次 200、之后全部 **429**。
 
 ### 规则持久化到 Nacos
 
@@ -225,6 +242,9 @@ java -Dserver.port=8080 -Dcsp.sentinel.dashboard.server=127.0.0.1:8080 \
 
 ### 实测中发现的一个真实缺陷（务必知道）
 
+> **版本说明**：以下是 **Sentinel 1.8.6** 时代的实测记录（旧版本行为）；当前模块已升到 **1.8.9**，
+> 该缺陷是否仍在 1.8.9 复现未做复测，演示系统保护时请按下面的「结论与规避」判定。
+
 **系统保护规则「看起来没生效」，其实是 Sentinel 1.8.6 自身的一个 NPE Bug。** 系统规则默认关闭，
 用 `GET /system/enable?enabled=true` 打开、入口 QPS 阈值设为 5，再用 **30 并发 × 60 次**打任意接口：
 
@@ -265,7 +285,7 @@ java.lang.NullPointerException
 **结论与规避**：系统规则的**统计与拦截本身是好的**，坏的是「被拦时写 block 日志」这一步。
 所以演示系统保护请用 `/system/entry-node` 看 `passQps` 是否被钉住、`blockQps` 是否上涨来判定生效，
 **不要用 HTTP 状态码判断**。生产上若依赖「被拦必须返回 429」，需留意这个 1.8.6 的坑
-（升级 Sentinel 版本，或避免让系统规则拦在需要写 block 日志的路径上）。
+（当前栈已是 1.8.9，是否修复未复测；稳妥做法是避免让系统规则拦在需要写 block 日志的路径上）。
 
 ## 思考点
 

@@ -20,4 +20,19 @@
         <module>seata-inventory</module>
     </modules>
 
+    <!-- 两个子模块共用：Seata 客户端还需要 Jackson 2 -->
+    <dependencies>
+        <!-- 升级必加（Boot 4 + Seata 2.5.0）：Boot 4 用 Jackson 3（tools.jackson.*）并移除了 Jackson 2，
+             而 Seata 客户端内部仍硬编码 com.fasterxml.jackson.core.*，运行时会炸：
+               NoClassDefFoundError: com/fasterxml/jackson/core/JsonProcessingException
+             外在表现是下单直接失败 Could not open JDBC Connection for transaction、xid=null，
+             极易被误判成数据库/驱动问题（本机实测踩过）。
+             Boot 4 的 BOM 已不管理 Jackson 2，所以这里必须显式带版本（见根 pom 的 jackson2.version）。 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson2.version}</version>
+        </dependency>
+    </dependencies>
+
 </project>

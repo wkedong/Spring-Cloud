@@ -2,7 +2,7 @@ package com.wkedong.springcloud.security;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 
 /**
  * Spring Security + JWT 教学模块入口（端口 8240）。
@@ -18,7 +18,11 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
  * @author wkedong
  */
 @SpringBootApplication
-@EnableGlobalMethodSecurity(prePostEnabled = true)
+// 升级必改（Spring Security 7）：@EnableGlobalMethodSecurity 已被移除，
+// 启动直接失败：IllegalStateException: @EnableGlobalMethodSecurity requires the
+// spring-security-access dependency on the classpath ... or migrate to @EnableMethodSecurity
+// @EnableMethodSecurity 默认 prePostEnabled=true，无需再写参数。
+@EnableMethodSecurity
 public class SecurityDemoApplication {
 
     public static void main(String[] args) {

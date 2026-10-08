@@ -1,7 +1,9 @@
 # 22 · 认证与授权：Spring Security + JWT
 
 > 模块：security-demo/（8240）。无需注册中心，单机可跑。
-> 版本对照：本篇用 Spring Security 5.7 起的组件式配置（`WebSecurityConfigurerAdapter` 已废弃），写法对照见 [08-升级迁移指南](08-升级迁移指南.md)。
+> 版本对照：本篇用 Spring Security 5.7 起的组件式配置（`WebSecurityConfigurerAdapter` 已废弃）；当前栈是
+> **Spring Security 7**（Boot 4.0.8），方法级开关已换成 `@EnableMethodSecurity`（旧 `@EnableGlobalMethodSecurity`
+> 被移除，留着它启动直接失败），匹配器 API 也统一为 `requestMatchers`。写法对照见 [08-升级迁移指南](08-升级迁移指南.md)。
 
 ## 学什么
 
@@ -30,9 +32,9 @@ SecurityFilterChain securityFilterChain(HttpSecurity http, /* ... */) throws Exc
         .formLogin(form -> form.disable()).httpBasic(basic -> basic.disable())  // 关浏览器登录框与 Basic
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))  // 不建 Session
         .authorizeHttpRequests(auth -> auth
-            .antMatchers("/auth/**", "/actuator/health").permitAll()   // 白名单要尽量小
-            .antMatchers(HttpMethod.GET, "/api/public/**").permitAll()
-            .antMatchers("/api/admin/**").hasRole("ADMIN")             // URL 级第一道闸
+            .requestMatchers("/auth/**", "/actuator/health").permitAll()   // 白名单要尽量小
+            .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+            .requestMatchers("/api/admin/**").hasRole("ADMIN")             // URL 级第一道闸
             .anyRequest().authenticated())
         .exceptionHandling(ex -> ex.authenticationEntryPoint(entryPoint)   // 401 → JSON
                                   .accessDeniedHandler(deniedHandler))     // 403 → JSON
@@ -68,7 +70,10 @@ gac.setAuthoritiesClaimName("roles");   // 默认只认 scope/scp
 gac.setAuthorityPrefix("ROLE_");        // 默认前缀是 SCOPE_
 ```
 
-**④ 方法级鉴权**：`@EnableGlobalMethodSecurity(prePostEnabled = true)` 写在启动类上，读写接口都标 `@PreAuthorize("hasRole('ADMIN')")`；`hasRole('ADMIN')` 会自己补 `ROLE_` 前缀再比对，所以 claim 里存干净的 `ADMIN`、映射时补前缀最省心。
+**④ 方法级鉴权**：启动类上开 `@EnableMethodSecurity`（Spring Security 7 里旧注解 `@EnableGlobalMethodSecurity` 已被移除，
+留着它启动直接失败：`IllegalStateException: @EnableGlobalMethodSecurity requires the spring-security-access dependency ...
+migrate to @EnableMethodSecurity`；新注解默认 `prePostEnabled=true`，不用再写参数），读写接口都标
+`@PreAuthorize("hasRole('ADMIN')")`；`hasRole('ADMIN')` 会自己补 `ROLE_` 前缀再比对，所以 claim 里存干净的 `ADMIN`、映射时补前缀最省心。
 
 ## 关键机制
 
@@ -141,6 +146,10 @@ curl -s -o /dev/null -w 'method-level user=%{http_code} ' -H "Authorization: Bea
 curl -s -o /dev/null -w 'admin=%{http_code}\n' -H "Authorization: Bearer $ADMIN" localhost:8240/api/demo/method-level
 # method-level user=403 admin=200
 ```
+
+升级后实测的安全矩阵（四条出口一次看全）：**无 token → 401；user 令牌访问 ADMIN 接口 → 403；
+方法级 `@PreAuthorize` 对 user → 403；公开端点 → 200**。两个 403 的来源不同（URL 级 `hasRole('ADMIN')` 与方法级注解），
+但对客户端是同一个状态码，排错时要分清是哪一道闸拦的。
 
 令牌失效的几种场景原因不同、但对客户端都是 401，原因只在响应头里（默认输出模式才带 `error_description`；本模块的 JSON 输出刻意只回统一文案）：
 

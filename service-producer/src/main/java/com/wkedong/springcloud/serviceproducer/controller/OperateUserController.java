@@ -1,7 +1,7 @@
 package com.wkedong.springcloud.serviceproducer.controller;
 
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import com.wkedong.springcloud.serviceproducer.entity.UserEntity;
 import com.wkedong.springcloud.serviceproducer.service.OperateUserService;
 import org.apache.commons.lang3.math.NumberUtils;

@@ -16,32 +16,31 @@ eureka:
     #   结果 health / refresh 两个端点直接 500（本机实测）。显式关掉 refresh scope 后走普通单例客户端，端点恢复 200。
     refresh:
       enable: false
-    service-url:
-      defaultZone: http://localhost:6060/eureka/
+    serviceUrl:
+      defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
 server:
-  port: 6010
+  port: 7010  #当前服务端口
 spring:
-  application:
-    name: config
-  #  cloud:
-  #    config:
-  #      server:
-  #        git:
-  #          uri: https://github.com/wkedong/Spring-Cloud-Config.git
-  profiles:
-    active: jdbc
+  # 配置中心的接入方式（Boot 2.4+ 起的 Config Data API）：
+  #   spring.config.import 取代了 bootstrap 上下文与 spring-cloud-starter-bootstrap
+  #   optional: 前缀 = 配置中心暂时不可用也要能启动（本地开发/教学常用）
+  config:
+    import: optional:configserver:http://localhost:6010/
+  ## 从配置中心读取文件（label / profile / name 依旧生效）
   cloud:
     config:
-      server:
-        jdbc:
-          sql: SELECT `KEY`, `VALUE` from PROPERTIES where APPLICATION=? and PROFILE=? and LABEL=?
-  datasource:
-    url: jdbc:mysql://127.0.0.1:3306/spring_cloud_config?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
-    # MySQL 驱动 5.1 → 8.0：驱动类由 com.mysql.jdbc.Driver 更名为 com.mysql.cj.jdbc.Driver
-    driver-class-name: com.mysql.cj.jdbc.Driver
-  # Boot 1.5 的 flyway.* 前缀在 Boot 2.x 迁移到 spring.flyway.*
-  flyway:
-    locations: classpath:/schema
-    baseline-on-migrate: true
+      label: develop
+      profile: dev
+      name: service-consumer
+  application:
+    name: service-consumer    #当前服务ID
+
+# ==================== 链路追踪：Micrometer Tracing（Sleuth 退役后的官方方案） ====================
+management:
+  tracing:
+    sampling:
+      probability: 1.0 #采样率：1.0 = 全量上报（教学环境；生产按比例降采样）
+  zipkin:
+    tracing:
+      # 上报地址要写到 v2 API 路径（Sleuth 的 spring.zipkin.base-url 只写到主机端口）
+      endpoint: http://localhost:9411/api/v2/spans

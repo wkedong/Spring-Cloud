@@ -4,6 +4,13 @@ eureka:
   instance:
     hostname: localhost #主机名
   client:
+    # 同一个坑：即便不注册自己，Eureka 客户端自动配置仍在类路径上（本机实测服务端能起，
+    # 但显式关闭 Jersey 传输可避免日后切换为「自注册」时踩同一颗雷）
+    jersey:
+      enabled: false
+    # 同上：避免 refresh scope 重建 Eureka 客户端（服务端本机实测能起，但保持一致更安全）
+    refresh:
+      enable: false
     registerWithEureka: false #禁止注册中心注册自己
     fetchRegistry: false      #禁止检索服务
     healthcheck:

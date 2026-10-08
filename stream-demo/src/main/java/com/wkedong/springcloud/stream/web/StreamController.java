@@ -106,7 +106,7 @@ public class StreamController {
             } else {
                 // 键必须用 byte[]：Binder 会把它写成 Kafka 记录的 key（消费端可从 kafka_receivedMessageKey 读到）
                 Message<String> message = MessageBuilder.withPayload(content)
-                        .setHeader(KafkaHeaders.MESSAGE_KEY, key.getBytes(StandardCharsets.UTF_8))
+                        .setHeader(KafkaHeaders.KEY, key.getBytes(StandardCharsets.UTF_8))
                         .build();
                 sent = streamBridge.send(SEND_BINDING, message);
             }

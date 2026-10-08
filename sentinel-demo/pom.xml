@@ -43,6 +43,13 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
+        <!-- feign-micrometer：Feign 的 Micrometer 观测能力（客户端 span + 传播头注入）在独立构件里，
+             OpenFeign 核心不含它。缺了它：客户端 span 不会产生、traceId 不会写进下游请求头，
+             Zipkin 里下游会另起一条新 trace（本机实测踩到）。版本由 OpenFeign BOM 统一管理。 -->
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-micrometer</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

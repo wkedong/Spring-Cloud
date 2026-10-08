@@ -1,7 +1,7 @@
 # 25 · 消息驱动微服务：Spring Cloud Stream
 
 > 模块：`stream-demo/`（8230）。需要本地 Kafka（见「动手验证」）。
-> 实测环境：Spring Cloud Stream 3.2.10 + spring-kafka 2.8.11 + kafka-clients 3.1.2，本机 Kafka 4.3.1（KRaft 单节点，127.0.0.1:9092）。
+> 实测环境：Spring Cloud Stream **5.0.3** + spring-kafka **4**，本机 Kafka 4.3.1（KRaft 单节点，127.0.0.1:9092）。
 > 下文标「实测」的结论都来自本机跑出来的输出（见「动手验证」），标「原理」的只做说明、未在本机复现。
 
 ## 学什么
@@ -53,7 +53,8 @@ HTTP 触发生产用 `StreamBridge`（生产环境最常见的「按需发送」
 ```java
 streamBridge.send("streamSend-out-0", content);                          // 纯文本
 streamBridge.send("streamSend-out-0", MessageBuilder.withPayload(content)
-        .setHeader(KafkaHeaders.MESSAGE_KEY, key.getBytes(UTF_8)).build());   // 带 key：相同 key 必进同一分区
+        .setHeader(KafkaHeaders.KEY, key.getBytes(UTF_8)).build());   // 带 key：相同 key 必进同一分区
+        // 注意：KafkaHeaders.MESSAGE_KEY 已不存在（spring-kafka 4 / Stream 5.0.3 起改名 KafkaHeaders.KEY）
 ```
 
 | 端点 | 作用 |
@@ -113,14 +114,15 @@ spring:
 RabbitMQ Binder 才会（`queue = destination.group`）——这条是原理，本机没有 RabbitMQ 可对照。
 
 **错误处理与重试**：`max-attempts`（含首次）+ `back-off-initial-interval`（倍数默认 2，上限 `back-off-max-interval` 默认 10s）。
-实测 1 条毒消息：消费方法被调用 3 次，间隔 1004ms、2006ms，失败消息头上出现 `deliveryAttempt=3`。
-⚠️ **`max-attempts=-1`（无限重试）在 3.2.10 会让应用启动失败**：`Max attempts should be greater than zero.`（`@Min(1)` 校验，实测）。
-想近似无限只能写大数——代价是毒消息把分区永久堵死：实测 `max-attempts=1000000` 时该组 `CURRENT-OFFSET` 一直是 `-`、
-`LOG-END-OFFSET` 从 8 涨到 9，正常消息一条都进不来，DLQ 也永远不被触发。**结论：重试次数不能代替 DLQ。**
+实测 1 条毒消息：消费方法被调用 3 次、约 1s 一次（发送 18:09:44.105 → 重试耗尽 18:09:47.134），失败消息头上出现 `deliveryAttempt=3`，
+日志里是 `Retry policy for operation 'org.springframework.integration.kafka.inbound.KafkaInboundEndpoint...' exhausted; aborting execution`（`org.springframework.core.retry.RetryTemplate`）。
+⚠️ **`max-attempts=-1`（无限重试）会让应用启动失败**：`Max attempts should be greater than zero.`（`@Min(1)` 校验；旧版 3.2.10 实测，升级后未复测）。
+想近似无限只能写大数——代价是毒消息把分区永久堵死（旧版实测：`max-attempts=1000000` 时该组 `CURRENT-OFFSET` 一直是 `-`、
+`LOG-END-OFFSET` 从 8 涨到 9，正常消息一条都进不来，DLQ 也永远不被触发）。**结论：重试次数不能代替 DLQ。**
 
 **死信队列（DLQ）**：`enable-dlq: true` + `dlq-name`（不配时的默认名文档给的是 `<destination>.DLQ`，本机未单独实测）。
 重试耗尽后消息被投递到 DLQ topic，并带上排障头 `x-original-topic`、`x-original-partition`、`x-original-offset`、
-`x-exception-message`/`x-exception-stacktrace`（实测读到）。DLQ 的分区数跟源 topic（实测 3 个分区），
+`x-original-timestamp`（升级后实测读到），另有 `x-exception-message`/`x-exception-stacktrace` 记录失败原因。DLQ 的分区数跟源 topic（实测 3 个分区），
 且 **DLQ 跨组共享**：另一个消费者组从头重读同一条毒消息时会再次重试、再次投递，DLQ 里就出现同一业务消息的多份副本（实测，见「思考点」）。
 
 **消息转换与消息头**：默认 `contentType=application/json`，文本消息务必改 `text/plain`；payload 类型写 `Message<String>`
@@ -172,7 +174,25 @@ nohup java -jar stream-demo/target/stream-demo-0.0.1-SNAPSHOT.jar --server.port=
 pkill -f "stream-demo-0.0.1-SNAPSHOT.jar"   # 只杀自己起的 jar，Kafka/Nacos/Prometheus 不动
 ```
 
-**本机实测输出摘要**（2026-10-08，Corretto 17）：
+**升级后实测摘要**（Spring Cloud Stream 5.0.3 + spring-kafka 4，Kafka 4.3.1）：
+
+```text
+# 带 key 发送：key 一路保留到消费端（这正是 KafkaHeaders.KEY 改名后要重点确认的一环）
+[send] binding=streamSend-out-0 destination=stream-demo-topic key=k-001 sent=true payload={"msg":"upgrade-probe"}
+[consume] topic=stream-demo-topic partition=1 offset=10 payload={"msg":"upgrade-probe"}
+  消费端头：kafka_receivedTopic=stream-demo-topic, kafka_receivedPartitionId, kafka_offset, kafka_groupId,
+            kafka_receivedMessageKey=k-001（保留原始 key）
+
+# 毒消息：retry 3 次（约 1s 间隔）后进 DLQ
+  deliveryAttempt=3 | IllegalStateException: 模拟消费失败（毒消息，命中 fail）
+  Retry policy for operation '...KafkaInboundEndpoint...' exhausted; aborting execution
+# DLQ 记录头（升级后实测读到）
+  x-original-topic:stream-demo-topic  x-original-partition:0  x-original-offset:11  x-original-timestamp:...
+  x-exception-message / x-exception-stacktrace
+```
+
+**升级前实测输出摘要存档**（2026-10-08，Spring Cloud Stream 3.2.10 + spring-kafka 2.8.11 + kafka-clients 3.1.2，Corretto 17；
+其中「重试间隔 1004ms/2006ms」是旧版 `spring-retry` 的退避记录，升级后实测为约 1s 一次，见上）：
 
 ```text
 # 发送/消费/计数：{"code":0,...,"binding":"streamSend-out-0","destination":"stream-demo-topic","sent":true,"costMs":4}

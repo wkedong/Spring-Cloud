@@ -37,24 +37,23 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
-        <!-- Boot 2.4+ 默认不再加载 bootstrap.yml，保留 bootstrap 配置方式需显式引入 -->
+        <!-- Sleuth 已在 Spring Cloud 2022+ 退役：改用 Micrometer Tracing（Brave 桥接）+ Zipkin 上报 -->
+        <!-- Boot 4 把链路追踪也拆成了独立模块：Tracer/Zipkin 上报的自动配置不再随 actuator 传递。
+             spring-boot-starter-zipkin 一次带齐四件套：
+               spring-boot-micrometer-tracing(-brave)（Tracer/传播器自动配置）
+               + spring-boot-zipkin（按 management.zipkin.tracing.endpoint 上报）
+               + micrometer-tracing-bridge-brave（Brave 桥接）
+               + zipkin-reporter-brave（Zipkin 上报器）
+             只加桥接包（Boot 3 的写法）在 Boot 4 下会缺 io.micrometer.tracing.Tracer bean，启动直接失败。 -->
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-bootstrap</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-sleuth-zipkin</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-sleuth</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-zipkin</artifactId>
         </dependency>
         <!-- fastjson 升级到安全修复版 -->
         <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-            <version>1.2.83</version>
+            <groupId>com.alibaba.fastjson2</groupId>
+            <artifactId>fastjson2</artifactId>
+            <version>${fastjson2.version}</version>
         </dependency>
         <!-- 原 commons-fileupload 依赖：本模块代码实际未使用（multipart 由 RestTemplate 直接转发），已移除 -->
     </dependencies>

@@ -8,7 +8,10 @@ Spring Boot 本体深化、新一代组件栈（Nacos / Sentinel / Stream / Secu
 教学原则只有三条：**代码可跑、配置自包含、结论有实测输出**。
 每篇文档的「动手验证」小节里的命令与输出，都是在本机真实执行后抄回来的。
 
-技术栈：Spring Boot 2.7.18 · Spring Cloud 2021.0.9 · Spring Cloud Alibaba 2021.0.5.0 · Java 8（用 JDK 17 编译）。
+技术栈：Spring Boot 4.0.8 · Spring Cloud 2025.1.3 · Spring Cloud Alibaba 2025.1.0.0 · Java 17。
+配套组件（升级实测版本）：Jackson 3（`tools.jackson.*`）· fastjson2 2.0.65 ·
+mybatis-spring-boot-starter 4.1.0 · Nacos 客户端 3.1.1（服务端 3.2.4）· Sentinel 1.8.9 ·
+Seata 2.5.0（Apache 版，包名 `org.apache.seata.*`）· Surefire 3.5.6。
 
 ## 学习主线（5 个阶段，31 篇）
 
@@ -23,8 +26,8 @@ Spring Boot 本体深化、新一代组件栈（Nacos / Sentinel / Stream / Secu
 | [04 · 声明式调用 Feign](docs/04-声明式调用Feign.md) | OpenFeign、multipart 文件透传 | `service-consumer-feign` |
 | [05 · 服务容错保护](docs/05-服务容错保护.md) | Resilience4j 熔断 + 降级 fallback | `service-consumer-ribbon-hystrix` |
 | [06 · 服务网关](docs/06-服务网关.md) | Spring Cloud Gateway 路由 | `zuul` |
-| [07 · 服务追踪](docs/07-服务追踪.md) | Sleuth 3.1 + 官方 Zipkin | 各业务模块 |
-| [08 · 升级迁移指南](docs/08-升级迁移指南.md) | Edgware → 2021.0 新旧全量对照 | 全部 |
+| [07 · 服务追踪](docs/07-服务追踪.md) | Micrometer Tracing 1.6 + 官方 Zipkin | 各业务模块 |
+| [08 · 升级迁移指南](docs/08-升级迁移指南.md) | Edgware → 2021.0 → 2025.1 新旧全量对照 | 全部 |
 | [09 · 本地运行指南](docs/09-本地运行指南.md) | 全模块启动矩阵、验证清单、踩坑表 | 全部 |
 
 ### 阶段二 · Spring Boot 本体深化：先把单体写扎实
@@ -37,7 +40,7 @@ Spring Boot 本体深化、新一代组件栈（Nacos / Sentinel / Stream / Secu
 | [13 · 缓存、异步与定时任务](docs/13-缓存异步与定时任务.md) | `@Cacheable`/`@Async`/`@Scheduled` 与线程池、自调用坑 | `springboot-basics` |
 | [14 · 可观测与运维](docs/14-可观测与运维.md) | Actuator 端点、健康检查、指标、优雅停机 | `springboot-basics` |
 | [15 · 自动配置与自定义 Starter](docs/15-自动配置与自定义Starter.md) | 条件装配、`AutoConfiguration.imports`、自定义 starter | `basics-audit-spring-boot-starter` |
-| [16 · 测试策略](docs/16-测试策略.md) | 切片测试、MockMvc、`@MockBean`、测试配置隔离 | `springboot-basics` |
+| [16 · 测试策略](docs/16-测试策略.md) | 切片测试、MockMvc、`@MockitoBean`、测试配置隔离 | `springboot-basics` |
 
 ### 阶段三 · Spring Cloud 组件进阶：把核心链路用到生产级
 
@@ -76,19 +79,19 @@ Spring Boot 本体深化、新一代组件栈（Nacos / Sentinel / Stream / Secu
 | 模块（目录） | 端口 | 教学主题 | 关键组件 | 外部依赖 |
 | --- | --- | --- | --- | --- |
 | `eureka` | 6060 | 服务注册与发现 | Eureka Server | — |
-| `config` | 6010 | 配置中心（JDBC 后端） | Config Server + Flyway 8.5 | MySQL |
+| `config` | 6010 | 配置中心（JDBC 后端） | Config Server + Flyway 11.14.1 | MySQL |
 | `zuul` | 6050 | 服务网关（目录名为历史名） | **Spring Cloud Gateway** | — |
-| `service-producer` | 6070 / 6080 / 6090 | 服务提供者、灰度元数据 | MyBatis 2.3 + MySQL 8 | MySQL、Config |
+| `service-producer` | 6070 / 6080 / 6090 | 服务提供者、灰度元数据 | MyBatis Starter 4.1.0 + MySQL 8 | MySQL、Config |
 | `service-consumer` | 7010 | 服务消费 | RestTemplate + LoadBalancer | Config |
 | `service-consumer-feign` | 7020 | 声明式调用、拦截器/解码器/降级 | **OpenFeign** + Resilience4j | Config |
 | `service-consumer-ribbon` | 7030 | 灰度负载均衡与重试 | **LoadBalancer** | Config |
 | `service-consumer-ribbon-hystrix` | 7040 | 容错全家桶 | **Resilience4j** | Config |
 | `springboot-basics` | 8010 | Boot 本体（Web/配置/数据/缓存/运维/测试） | Boot + H2 | — |
 | `basics-audit-spring-boot-starter` | — | 自动配置与自定义 Starter | Boot 自动配置 | — |
-| `nacos-demo` | 8210 / 8211 | 注册 + 配置一体 | **Spring Cloud Alibaba Nacos** | Nacos |
+| `nacos-demo` | 8210 / 8211 | 注册 + 配置一体 | **Spring Cloud Alibaba Nacos** | Nacos 3.x |
 | `sentinel-demo` | 8220 | 流控与熔断降级 | **Sentinel** | 可选 Dashboard |
 | `stream-demo` | 8230 | 消息驱动 | **Spring Cloud Stream** + Kafka Binder | Kafka |
-| `security-demo` | 8240 | 认证授权 | **Spring Security 5.7** + Nimbus JWT | — |
+| `security-demo` | 8240 | 认证授权 | **Spring Security 7** + Nimbus JWT | — |
 | `seata-demo/seata-order` | 8250 | 分布式事务发起方 | **Seata AT** | Seata Server、MySQL |
 | `seata-demo/seata-inventory` | 8260 | 分布式事务参与方 | **Seata AT** | Seata Server、MySQL |
 | （基础设施） | 3306 / 8848 / 9092 / 8091 / 9090 / 3000 / 9411 | MySQL / Nacos / Kafka / Seata / Prometheus / Grafana / Zipkin | 单机版即可 | — |
@@ -130,14 +133,18 @@ flowchart LR
 ## 快速开始
 
 ```bash
-# 0) 工具链：Java 8 源码，用 JDK 17 编译（Maven 3.6+）
+# 0) 工具链：Java 17（Maven 3.6+）
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS；Linux 用对应 JDK 17 路径
 
 # 1) 基础设施：MySQL(3306) + Zipkin(9411)
 docker compose up -d
 
-# 2) 构建
+# 2) 构建（改依赖后必须 clean：Boot 4 的 repackage 不刷新 fat jar 里的嵌套依赖，
+#    只 package 不 clean 会静默复用 BOOT-INF/lib 里的旧包）
 mvn clean package -DskipTests
+
+# 全仓单测（Surefire 3.5.6：-DfailIfNoTests 已改名，需配合 -Dsurefire.failIfNoSpecifiedTests=false）
+mvn -B -Dtest='*Test,*Tests' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false test
 
 # 3) 按依赖顺序启动核心链路（完整步骤见 docs/09）
 java -jar eureka/target/eureka-0.0.1-SNAPSHOT.jar

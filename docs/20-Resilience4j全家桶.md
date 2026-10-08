@@ -24,12 +24,12 @@
 <dependency>   <!-- 官方 starter：只提供 CircuitBreaker/TimeLimiter 抽象 -->
     <groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
 </dependency>
-<dependency>   <!-- 必须补：Bulkhead 与 Decorators 都在这里；版本由 resilience4j-bom 管理（本仓库 1.7.0） -->
+<dependency>   <!-- 必须补：Bulkhead 与 Decorators 都在这里；版本由 resilience4j-bom 管理（本仓库 2.3.0） -->
     <groupId>io.github.resilience4j</groupId><artifactId>resilience4j-all</artifactId>
 </dependency>
 ```
 
-只加 starter 会编译报 **「程序包 io.github.resilience4j.bulkhead 不存在」**：`spring-cloud-circuitbreaker-resilience4j` 把 `resilience4j-bulkhead` 声明成了 `optional`（Maven 的 optional 依赖**不会传递**），而 `Decorators` 组合 API 在 `resilience4j-all` 里。`resilience4j-all` 是聚合模块，一次补齐 ratelimiter / circuitbreaker / bulkhead / retry / cache / timelimiter（实测打出来的 jar 里就是 `resilience4j-all-1.7.0.jar` 与 `resilience4j-bulkhead-1.7.0.jar`）。
+只加 starter 会编译报 **「程序包 io.github.resilience4j.bulkhead 不存在」**：`spring-cloud-circuitbreaker-resilience4j` 把 `resilience4j-bulkhead` 声明成了 `optional`（Maven 的 optional 依赖**不会传递**），而 `Decorators` 组合 API 在 `resilience4j-all` 里。`resilience4j-all` 是聚合模块，一次补齐 ratelimiter / circuitbreaker / bulkhead / retry / cache / timelimiter（实测打出来的 jar 里就是 `resilience4j-all-2.3.0.jar` 与 `resilience4j-bulkhead-2.3.0.jar`）。
 
 ### 2. Retry：偶发失败自动再试
 
@@ -75,7 +75,7 @@ Supplier<String> decorated = Decorators.ofSupplier(business)
 ```
 越靠前越「内层」：Bulkhead 决定放行 → CircuitBreaker 判断是否短路 → Retry 在内部重复执行 → 全都失败才走 Fallback。
 
-### 6. bootstrap.yml：各组件配置
+### 6. application.yml：各组件配置
 
 ```yaml
 resilience4j:
@@ -98,12 +98,12 @@ resilience4j:
 
 ## 关键机制与易错点
 
-1. **依赖坑（最常见）**：`spring-cloud-starter-circuitbreaker-resilience4j` **不含** bulkhead 与 Decorators，必须额外加 `io.github.resilience4j:resilience4j-all`，否则编译期就报「程序包 io.github.resilience4j.bulkhead 不存在」；版本不用手写，`resilience4j-bom` 已经管好（本仓库解析为 1.7.0）。
+1. **依赖坑（最常见）**：`spring-cloud-starter-circuitbreaker-resilience4j` **不含** bulkhead 与 Decorators，必须额外加 `io.github.resilience4j:resilience4j-all`，否则编译期就报「程序包 io.github.resilience4j.bulkhead 不存在」；版本不用手写，`resilience4j-bom` 已经管好（本仓库解析为 2.3.0）。
 2. **TimeLimiter 的默认值是 1s**：不改就直接打断正常业务；本模块特意用 `configs.default: 3s` 兜底、只为 `slowCall` 实例单独配 1s，`instances` 优先于 `configs`，两层都配时要确认到底命中了哪个。
 3. **Bulkhead 的 `max-wait-duration: 0` 是不等待**：并发满了立刻 `BulkheadFullException`，不是「排 0 秒队」；要缓解尖峰就给它一个正的等待时长，但那会把压力转成上游线程的等待。
 4. **Retry 与 CircuitBreaker 的顺序别颠倒**：必须是 Retry 在内、CircuitBreaker 在外（`.withRetry().withCircuitBreaker()`）。反过来的话熔断器统计到的是**重试之后**的最终结果，失败次数被压缩、打开时机被推迟；Retry 在内层时每一次失败尝试都会被计入统计。
 5. **同步调用才能用 TimeLimiter**：它本质是把调用扔到独立线程池里限时等待，所以不能拿它去包已经异步的 `CompletableFuture` 链，否则白占一个线程池；`cancel-running-future: true` 只是尽力中断，底层阻塞的 IO 未必真的停。
-6. **熔断器名字要对齐两处**：`circuitBreakerFactory.create("名字")` 与 `resilience4j.circuitbreaker.instances.<名字>` 必须一致，否则拿到的是 `default` 配置——「明明配了阈值却不生效」基本都是这里。`feign.circuitbreaker.enabled=true` 走的是同一套：Feign 的每个方法都会被包成一个以方法签名命名的熔断器（呼应 docs/17，那边 `/actuator/circuitbreakers` 里能看到 `FeignService#testError()` 这类名字）。
+6. **熔断器名字要对齐两处**：`circuitBreakerFactory.create("名字")` 与 `resilience4j.circuitbreaker.instances.<名字>` 必须一致，否则拿到的是 `default` 配置——「明明配了阈值却不生效」基本都是这里。`spring.cloud.openfeign.circuitbreaker.enabled=true` 走的是同一套：Feign 的每个方法都会被包成一个熔断器（呼应 docs/17，那边降级日志里的实例名是 `FeignServicetestSlowint` 这类「接口名+方法名+参数类型」直接拼接的名字，2025.1 起不再带 `#`/括号）。
 7. **actuator 端点不会自动出现**：`/actuator/circuitbreakers`、`circuitbreakerevents`、`retries`、`bulkheads`、`ratelimiters`、`timelimiters` 都需要在 `management.endpoints.web.exposure.include` 里显式放开。`failureRate` 显示 **-1.0** 不是「失败率是负的」，而是样本不足、还没算出来。
 8. **重试的前提是幂等**：GET 可以随便重试，写操作重试必须有幂等键，否则一次超时可能变成两笔订单；叠加网关的 Retry（docs/19）时，两层重试的次数是相乘的。
 9. **熔断器是「慢慢打开」的**：`minimum-number-of-calls: 5` + `failure-rate-threshold: 50` 意味着样本没攒够就不会开——所以 `/resilience/decorators?fail=true` 返回的 `circuitBreakerState` 取决于之前累积了多少次调用，单跑一次可能还是 `CLOSED`。
@@ -139,8 +139,8 @@ for i in $(seq 1 5); do curl -s http://127.0.0.1:7040/resilience/ratelimiter | \
 
 # ⑤ TimeLimiter：下游 3 秒、超时上限 1 秒 → 提前降级
 curl -s http://127.0.0.1:7040/resilience/timelimiter
-# {"seconds":3,"result":"【降级】producer 响应超过 1s 上限（TimeoutException）","costMillis":1012,"hint":"costMillis 应接近 1000 而不是 3000"}
-# 期望看到什么：costMillis≈1012 而不是 3000 —— 1 秒就到点走 fallback 了；去掉 TimeLimiter（或把 slowCall 的超时调大）再试，costMillis 会变成 3000 左右。
+# {"seconds":3,"result":"【降级】producer 响应超过 1s 上限（ExecutionException）","costMillis":1004,"hint":"costMillis 应接近 1000 而不是 3000"}
+# 期望看到什么：costMillis≈1005 而不是 3000 —— 1 秒就到点走 fallback 了；实测落到兜底方法里的异常类型是 ExecutionException（TimeLimiter 把底层的 TimeoutException 包在里面抛出，见 ⑧ 的熔断器事件）；去掉 TimeLimiter（或把 slowCall 的超时调大）再试，costMillis 会变成 3000 左右。
 
 # ⑥ Decorators 组合：正常路径 vs 业务失败
 curl -s "http://127.0.0.1:7040/resilience/decorators?fail=false"

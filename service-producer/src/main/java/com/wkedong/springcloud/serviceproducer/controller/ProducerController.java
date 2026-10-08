@@ -1,6 +1,6 @@
 package com.wkedong.springcloud.serviceproducer.controller;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 import com.wkedong.springcloud.serviceproducer.service.ProducerService;
 import com.wkedong.springcloud.serviceproducer.service.SpanAnnotatedService;
 import org.slf4j.Logger;

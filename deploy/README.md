@@ -6,7 +6,7 @@
 | --- | --- |
 | `Dockerfile` | 通用多阶段镜像：Maven 构建 → `jarmode=layertools` 分层 → JRE 运行，非 root |
 | `docker-compose.yml` | 整栈编排：eureka/config/producer×2/feign/ribbon/hystrix/gateway + mysql + zipkin |
-| `docker-compose-nacos.yml` | 可选：Nacos 单机版（8848）与 nacos-demo（8210/8211），对应 docs/24 |
+| `docker-compose-nacos.yml` | 可选：**Nacos 3.x** 单机版（8848 + gRPC 9848/9849，控制台独立端口 8080）与 nacos-demo（8210/8211），对应 docs/24 |
 | `README.md` | 本文档 |
 | `prometheus.yml`、`grafana/` | 与容器化无关的监控配置（Prometheus 抓取 + Grafana 数据源/看板），归 docs/27 |
 
@@ -70,11 +70,15 @@ $JAVA_HOME/bin/java -Djarmode=layertools -jar service-producer/target/service-pr
 $JAVA_HOME/bin/java -Djarmode=layertools -jar service-producer/target/service-producer-0.0.1-SNAPSHOT.jar \
     extract --destination /tmp/layers-demo
 du -sh /tmp/layers-demo/*
-#  96K  application              （20 个文件：BOOT-INF/classes、bootstrap.yml、META-INF、layers.idx）
+#  96K  application              （20 个文件：BOOT-INF/classes（含 application.yml 等本地资源）、META-INF、layers.idx）
 #  69M  dependencies             （151 个文件：BOOT-INF/lib 里的第三方 jar，最大的一层）
 #   0B  snapshot-dependencies    （0 个文件：本仓库没有 SNAPSHOT 外部依赖，目录是空的）
 # 408K  spring-boot-loader       （68 个文件：org/springframework/boot/loader 启动器）
 ```
+
+> 这组 `du` 是 **Boot 2.7 时代的分层实测存档**：层名与「谁大谁小」的结论不变，具体文件数/体积随依赖变化。
+> 其中 `application` 层原先列的是 `bootstrap.yml`——Boot 4 的模块已经没有这个文件（配置在 `application.yml`），已按现状更正。
+> 想拿最新数字，把上面三条命令重跑一次即可。
 
 `Dockerfile` 就是按这个顺序 `COPY --from=builder` 的。收益很直接：
 
@@ -114,15 +118,19 @@ JVM 不设堆上限时按**宿主机**内存算，容器里容易被 OOMKilled�
 
 **4. 配置外置与 profile 传递**
 
-仓库里的 `bootstrap.yml` 写的是 `localhost:6060` / `localhost:6010`，容器里 `localhost`
+仓库里的 `application.yml` 写的是 `localhost:6060` / `localhost:6010`（Boot 4 已没有 `bootstrap.yml`，
+配置中心改用 `spring.config.import: optional:configserver:http://localhost:6010/` 接入），容器里 `localhost`
 指向容器自己，必须用环境变量覆盖（Spring Boot relaxed binding）：
 
 | 环境变量 | 覆盖的配置项 | compose 里的值 |
 | --- | --- | --- |
 | `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE` | `eureka.client.serviceUrl.defaultZone` | `http://eureka:6060/eureka/` |
 | `SPRING_CLOUD_CONFIG_URI` | `spring.cloud.config.uri` | `http://config:6010/` |
-| `SPRING_ZIPKIN_BASE_URL` | `spring.zipkin.base-url` | `http://zipkin:9411` |
+| `MANAGEMENT_ZIPKIN_TRACING_ENDPOINT` | `management.zipkin.tracing.endpoint` | `http://zipkin:9411/api/v2/spans` |
 | `SPRING_DATASOURCE_URL` | `spring.datasource.url` | `jdbc:mysql://mysql:3306/...` |
+
+> 旧键提示：Sleuth 时代的 `SPRING_ZIPKIN_BASE_URL` / `SPRING_ZIPKIN_BASEURL`（对应 `spring.zipkin.base-url`）
+> 随 Sleuth 一起失效了——写了也不会报错，只是不再生效，span 不会上报到 Zipkin。
 
 Spring profile 用 `SPRING_PROFILES_ACTIVE` 传：`producer-peer1` 传 `peer1`（端口 6070）、
 `producer-peer2` 传 `peer2`（端口 6080）。**不能在 profile 特定文件里声明 `spring.profiles.active`**
@@ -134,7 +142,7 @@ Spring profile 用 `SPRING_PROFILES_ACTIVE` 传：`producer-peer1` 传 `peer1`�
 
 | 目标属性 | 可用的环境变量 | 结论 |
 | --- | --- | --- |
-| `spring.zipkin.base-url` | `SPRING_ZIPKIN_BASE_URL` / `SPRING_ZIPKIN_BASEURL` | 两种都绑得上 |
+| `management.zipkin.tracing.endpoint` | `MANAGEMENT_ZIPKIN_TRACING_ENDPOINT` | 现役键（Boot 4 的 Micrometer Tracing）；旧 `SPRING_ZIPKIN_BASE_URL` 已失效 |
 | `spring.cloud.nacos.discovery.server-addr` | `..._SERVER_ADDR` / `..._SERVERADDR` | 两种都绑得上 |
 | `spring.cloud.nacos.discovery.metadata.instance-port` | `..._INSTANCE_PORT` | ❌ 会绑成 `metadata.instance.port` |
 | 同上（Map 里的 key） | `..._INSTANCE-PORT`，或命令行 `--spring.cloud.nacos.discovery.metadata.instance-port=8211` | ✅ 推荐后者 |
@@ -189,12 +197,24 @@ compose 的宿主端口与容器端口一一对应（6060/6010/6050/6070/6080/70
    所以 Dockerfile 里用了 `apt-get` / `groupadd` / `useradd`——若换成 `-alpine` 变体，
    这三处都要改成 `apk` / `addgroup` / `adduser`。
 3. `openzipkin/zipkin:3` 里是否带 busybox `wget` 未验证，所以**故意没给它写 healthcheck**。
-4. 各服务在容器里的**实际注册与调用链**未验证：环境变量覆盖 `bootstrap.yml` 的思路是标准做法，
-   但 `spring.cloud.config.uri` 属于 bootstrap 阶段（仓库引了 `spring-cloud-starter-bootstrap`），
-   首次真实构建时应先确认配置中心确实被访问到。
+4. 各服务在容器里的**实际注册与调用链**未验证：环境变量覆盖 `application.yml` 的思路是标准做法，
+   但配置中心接入已从 `bootstrap.yml` + `spring-cloud-starter-bootstrap`（`spring.cloud.config.uri` 属于
+   bootstrap 阶段）换成 Config Data API：`spring.config.import: optional:configserver:http://localhost:6010/`
+   （Spring Cloud 2025.1 不再加载 `bootstrap.yml`，这个 starter 已废弃）。
+   **这里有个尚未在容器里验证的疑点**：模块的 `application.yml` 已经把 URI 写死在 import 字符串里，
+   而按 Spring Cloud Config 的解析规则，import 里带了 URI 之后 `spring.cloud.config.uri`
+   （即 compose 里传的 `SPRING_CLOUD_CONFIG_URI`）只作为「import 没写 URI」时的默认值；
+   容器里更稳妥的覆盖方式是 `SPRING_CONFIG_IMPORT=optional:configserver:http://config:6010/`。
+   首次真实构建时请重点确认配置中心确实被访问到（这一步没有任何容器内证据）。
 5. `service-consumer`(7010)、`springboot-basics`(8010)、`nacos-demo`(8210)、`sentinel-demo`(8220)、
-   `stream-demo`(8230)、`security-demo`(8240)、`seata-demo`(8250/8260) **没有写进编排**，
-   它们要么单机自足、要么需要额外中间件（Kafka 9092、Seata 8091、Sentinel Dashboard）。
+   `stream-demo`(8230)、`security-demo`(8240)、`seata-demo`(8250/8260)、`seata-server`(8091) **没有写进编排**，
+   它们要么单机自足、要么需要额外中间件（Kafka 9092、Seata 8091、Sentinel Dashboard）；
+   同理，`deploy/docker-compose.yml` 里也没有 Nacos 3.x（单独走 `docker-compose-nacos.yml`）。
+6. `deploy/Dockerfile` 的 `ENTRYPOINT` **还是 Boot 3.2 之前的旧启动类包名**
+   `org.springframework.boot.loader.JarLauncher`；Boot 4 里只剩
+   `org.springframework.boot.loader.launch.JarLauncher`（旧包已删除），
+   以及文件头部注释里的「本仓库 `java.version=1.8`、只用 `javax.*`」也已过期（现在是 Java 17 / `jakarta.*`）。
+   这两处**尚未修改**，本文提到的镜像构建若要真跑，请先按 `docs/29-容器化部署.md` 的写法改掉。
 
 ---
 ---

@@ -2,8 +2,9 @@
 # Spring-Cloud 教学仓库 · CI 流水线
 #
 # 每次 push / PR 回答三个问题：
-#   ① 15 个模块能不能一起编译过——多模块 reactor 顺序、Java 8 语法、BOM 版本是否统一；
-#   ② 有断言价值的单元测试是否还绿——springboot-basics 15 个用例 + 网关上下文 1 个；
+#   ① 17 个模块（reactor 共 18 行，含 seata-demo 聚合 pom）能不能一起编译过——多模块
+#       reactor 顺序、Java 17 语法、BOM 版本是否统一；
+#   ② 有断言价值的单元测试是否还绿——springboot-basics 的 15 个用例等（共 15 个）；
 #   ③ 可执行 jar 是否都能产出——打包后把制品留档，供人工下载验收。
 #
 # 为什么 CI 里不跑集成测试：
@@ -20,6 +21,7 @@
 #
 # 本机等价性验证（GitHub 官方 runner 无法在本机执行，只能验证命令等价性）：
 #   JDK 17（本机 Corretto 17.0.20）+ Maven 3.9.16，在「剔除 target/ 的干净副本」中逐条执行
+#   （Boot 4 升级后同样复核过：改依赖必须 mvn clean package，repackage 不会刷新嵌套依赖）
 #   下面的 run 命令，结果均为 BUILD SUCCESS——同一批命令在 GitHub runner 上只差一个干净
 #   的宿主环境与 Maven 仓库缓存，参见 docs/30-CICD与工程化收尾.md 的实测记录。
 # ============================================================================
@@ -53,7 +55,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin      # 与本机 Corretto 17.0.20 同属 JDK 17，产物无差异
-          java-version: '17'         # 源码是 Java 8 语法（java.version=1.8），用 17 编译
+          java-version: '17'         # Boot 4 的最低要求（java.version=17）
           cache: maven               # 缓存 ~/.m2/repository，命中后省掉整轮依赖下载
 
       # -DskipTests 只跳过「执行」测试，test-compile 仍然会编译测试源码：
@@ -110,14 +112,15 @@ jobs:
 
       # -Dtest='*Test,*Tests' 只跑命名规范的用例（本仓库两类：*Tests 是上下文测试，
       # *Test 是切片/单元测试）。
-      # -DfailIfNoTests=false 是必须的：一旦指定了 -Dtest，surefire 在「模块里一个匹配的
-      # 测试类都没有」时会直接判失败——本机实测第一条报错就是 eureka 模块：
-      #   Failed to execute goal ...maven-surefire-plugin:2.22.2:test (default-test) on
-      #   project eureka: No tests were executed! (Set -DfailIfNoTests=false to ignore ...)
-      # eureka / config / nacos-demo 等 8 个模块本来就没有测试源码（不是遗漏，而是它们的
-      # 验证形态是「起进程 + curl」，见 docs/09、docs/16），加上这个开关才会是绿的。
+      # 开关是必须的：一旦指定了 -Dtest，surefire 在「模块里一个匹配的测试类都没有」时会直接判失败
+      # ——本机实测第一条报错就是 eureka 模块。
+      # 升级踩坑：老写法 -DfailIfNoTests=false 在 surefire 3.x（Boot 4 托管 3.5.6）**已失效**，
+      # 它只管「测试类存在但没有可执行用例」，而「一个都没匹配上」换成了新参数：
+      #   -Dsurefire.failIfNoSpecifiedTests=false
+      # eureka / config / nacos-demo 等 8 个模块本来就没有测试源码（不是遗漏，它们的验证形态是
+      # 「起进程 + curl」，见 docs/09、docs/16），两个开关都写上才在各版本下都绿。
       - name: 跑单元测试（不依赖外部中间件）
-        run: mvn -B -Dtest='*Test,*Tests' -DfailIfNoTests=false test
+        run: mvn -B -Dtest='*Test,*Tests' -DfailIfNoTests=false -Dsurefire.failIfNoSpecifiedTests=false test
 
       # 失败时也要把报告捞出来，否则只能在 CI 日志里翻用例名
       - name: 上传 surefire 报告
@@ -154,7 +157,7 @@ jobs:
         run: mvn -B -DskipTests verify
 
       # 只留 Spring Cloud / Alibaba 两族依赖，输出即「BOM 到底给了哪个版本」的证据：
-      # 父 pom 用 dependencyManagement 导入 2021.0.9 与 2021.0.5.0，
+      # 父 pom 用 dependencyManagement 导入 2025.1.3 与 2025.1.0.0，
       # 各模块的 <dependency> 一律不写 version（写了反而会绕过 BOM 造成版本漂移）。
       - name: 打印关键模块的云组件版本
         run: |

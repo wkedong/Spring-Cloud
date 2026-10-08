@@ -48,41 +48,47 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
+        <!-- feign-micrometer：Feign 的 Micrometer 观测能力（客户端 span + 传播头注入）在独立构件里，
+             OpenFeign 核心不含它。缺了它：客户端 span 不会产生、traceId 不会写进下游请求头，
+             Zipkin 里下游会另起一条新 trace（本机实测踩到）。版本由 OpenFeign BOM 统一管理。 -->
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-micrometer</artifactId>
+        </dependency>
         <!-- CircuitBreaker 抽象 + Resilience4j 实现：Feign 的 fallbackFactory 依赖它 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-circuitbreaker-resilience4j</artifactId>
         </dependency>
-        <!-- Boot 2.4+ 默认不再加载 bootstrap.yml，保留 bootstrap 配置方式需显式引入 -->
+        <!-- Sleuth 已在 Spring Cloud 2022+ 退役：改用 Micrometer Tracing（Brave 桥接）+ Zipkin 上报 -->
+        <!-- Boot 4 把链路追踪也拆成了独立模块：Tracer/Zipkin 上报的自动配置不再随 actuator 传递。
+             spring-boot-starter-zipkin 一次带齐四件套：
+               spring-boot-micrometer-tracing(-brave)（Tracer/传播器自动配置）
+               + spring-boot-zipkin（按 management.zipkin.tracing.endpoint 上报）
+               + micrometer-tracing-bridge-brave（Brave 桥接）
+               + zipkin-reporter-brave（Zipkin 上报器）
+             只加桥接包（Boot 3 的写法）在 Boot 4 下会缺 io.micrometer.tracing.Tracer bean，启动直接失败。 -->
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-bootstrap</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-sleuth-zipkin</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-sleuth</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-zipkin</artifactId>
         </dependency>
         <!-- fastjson 升级到安全修复版 -->
         <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-            <version>1.2.83</version>
+            <groupId>com.alibaba.fastjson2</groupId>
+            <artifactId>fastjson2</artifactId>
+            <version>${fastjson2.version}</version>
         </dependency>
-        <!-- feign-form 3.0.3 → 3.8.0（配套 openfeign 3.1.x）；SpringFormEncoder 原生支持 MultipartFile，
-             不再需要 CommonsMultipartFile/DiskFileItem 二次包装，commons-fileupload 依赖随之移除 -->
+        <!-- 升级说明（OpenFeign 5.0.3 / feign 13.6.1）：feign-form 已被收编进 OpenFeign 主仓库，
+             坐标从 io.github.openfeign.form:feign-form(-spring):3.8.0 迁到
+             io.github.openfeign:feign-form(-spring):13.6.1（由 OpenFeign BOM 管理，无需写版本）。
+             ⚠️ 两个坐标的 groupId 不同，**旧的显式依赖不删就是两套同名类共存**：
+                feign.form.spring.SpringFormEncoder 会同时出现在 3.8.0 与 13.6.1 两个 jar 里，
+                fat jar 的 BOOT-INF/lib 下也确实并存（本机实测），加载到哪一份取决于 classpath 顺序。
+             13.6.1 的 SpringFormEncoder 仍是无参构造 + 原生支持 MultipartFile，
+             使用方代码（new SpringFormEncoder()）不用改，所以这里直接删掉旧坐标。 -->
         <dependency>
-            <groupId>io.github.openfeign.form</groupId>
-            <artifactId>feign-form</artifactId>
-            <version>3.8.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.openfeign.form</groupId>
+            <groupId>io.github.openfeign</groupId>
             <artifactId>feign-form-spring</artifactId>
-            <version>3.8.0</version>
         </dependency>
     </dependencies>
 

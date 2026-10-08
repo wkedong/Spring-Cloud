@@ -1,6 +1,6 @@
 package com.wkedong.springcloud.serviceproducer.service;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 
 import java.util.Map;
 
@@ -43,6 +43,6 @@ public interface ProducerService {
     /** 配置刷新对照：@RefreshScope 的值会随 /actuator/refresh 变化，普通 @Value 不会 */
     Map<String, Object> configRefreshDemo();
 
-    /** 编程式自定义 span + Baggage（Sleuth 3.x Tracer API） */
+    /** 编程式自定义 span + Baggage（Micrometer Tracing Tracer API） */
     String spanDemo(String tag);
 }

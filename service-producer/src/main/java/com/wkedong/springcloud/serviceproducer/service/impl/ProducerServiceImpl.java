@@ -1,6 +1,6 @@
 package com.wkedong.springcloud.serviceproducer.service.impl;
 
-import com.alibaba.fastjson.JSONObject;
+import com.alibaba.fastjson2.JSONObject;
 import com.netflix.appinfo.EurekaInstanceConfig;
 import com.wkedong.springcloud.serviceproducer.config.RefreshableConfig;
 import com.wkedong.springcloud.serviceproducer.service.ProducerService;
@@ -8,9 +8,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.sleuth.BaggageInScope;
-import org.springframework.cloud.sleuth.Span;
-import org.springframework.cloud.sleuth.Tracer;
+import io.micrometer.tracing.BaggageInScope;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
@@ -33,7 +33,7 @@ public class ProducerServiceImpl implements ProducerService {
     @Autowired
     private RefreshableConfig refreshableConfig;
 
-    /** Sleuth 3.x 的 Tracer：用于手动创建 span 与 Baggage */
+    /** Micrometer Tracing 的 Tracer（Sleuth 退役后的官方替代）：用于手动创建 span 与 Baggage */
     @Autowired
     private Tracer tracer;
 
@@ -164,9 +164,9 @@ public class ProducerServiceImpl implements ProducerService {
         // 编程式创建自定义 span：比注解更灵活（可在任意代码位置、能动态命名与打标签）
         Span span = tracer.nextSpan().name("producer-custom-span").tag("demo.tag", tag).start();
         try (Tracer.SpanInScope scope = tracer.withSpan(span)) {
-            // Baggage：随调用链传给下游的键值对（需在 spring.sleuth.baggage.remote-keys 中声明才会透传）
-            // Sleuth 3.x 的 API 是 tracer.createBaggage(...)，返回 BaggageInScope（close 后失效）
-            BaggageInScope baggage = tracer.createBaggage("gray-version", tag);
+            // Baggage：随调用链传给下游的键值对（需在 management.tracing.baggage.remote-fields 中声明才会透传）
+            // Micrometer Tracing 的 API 是 tracer.createBaggageInScope(...)，返回 BaggageInScope（close 后失效）
+            BaggageInScope baggage = tracer.createBaggageInScope("gray-version", tag);
             try {
                 Thread.sleep(120L);
                 logger.info("自定义 span 内：tag={}, traceId={}, spanId={}", tag,

@@ -1,0 +1,64 @@
+eureka:
+  client:
+    healthcheck:
+      enabled: true #健康检查开启
+    # 升级必改（Spring Cloud 2025.1 / Netflix 5.0.2）：Eureka 客户端已移除 Jersey 传输实现，
+    #   但 eureka.client.jersey.enabled 的默认值仍是 true（matchIfMissing=true），
+    #   结果是 RestClient 传输不会启用、客户端启动直接失败：
+    #     No qualifying bean of type 'com.netflix.discovery.shared.transport.jersey.TransportClientFactories'
+    #   本机实测：显式关掉后 Config Server 正常启动（RestClient 传输生效）。
+    jersey:
+      enabled: false
+    # 升级必改（Spring Cloud 2025.1 / Netflix 5.0.2）：默认 Eureka 客户端是 refresh scope 的 bean，
+    #   而 /actuator/health、/actuator/refresh 会触发 refresh scope 重建 —— 重建时
+    #   RefreshableEurekaClientConfiguration 造 EurekaClient 抛 NPE：
+    #     Fetch registry error at startup: null -> BeanCreationException: Failed to instantiate EurekaClient
+    #   结果 health / refresh 两个端点直接 500（本机实测）。显式关掉 refresh scope 后走普通单例客户端，端点恢复 200。
+    refresh:
+      enable: false
+    serviceUrl:
+      defaultZone: http://localhost:6060/eureka/  #注册中心服务地址
+server:
+  port: 7030  #当前服务端口
+spring:
+  # 配置中心的接入方式（Boot 2.4+ 起的 Config Data API）：
+  #   spring.config.import 取代了 bootstrap 上下文与 spring-cloud-starter-bootstrap
+  #   optional: 前缀 = 配置中心暂时不可用也要能启动（本地开发/教学常用）
+  config:
+    import: optional:configserver:http://localhost:6010/
+  ## 从配置中心读取文件（label / profile / name 依旧生效）
+  cloud:
+    config:
+      label: develop
+      profile: dev
+      name: service-consumer-ribbon
+  application:
+    name: service-consumer-ribbon    #当前服务ID
+
+# ==================== 负载均衡：实例缓存与重试（docs/18） ====================
+# Ribbon 已退役，下列配置取代原 ribbon.* 的等价能力
+spring.cloud.loadbalancer:
+  cache:
+    # 实例列表本地缓存时长（默认 35s）；教学时调小，便于尽快看到实例上下线
+    ttl: 2s
+  retry:
+    # 重试需要 spring-retry 依赖（已加入 pom）；重试发生在「负载均衡这一层」
+    enabled: true
+    # GET 默认总会重试；其它方法（POST 等）要显式开启（非幂等操作重试有风险）
+    retry-on-all-operations: false
+    # 同一个实例最多再试 1 次（producer 的 /testRetry 第一次必失败，正好用到这里）
+    max-retries-on-same-service-instance: 1
+    # 换下一个实例再试 1 次
+    max-retries-on-next-service-instance: 1
+    # 只有这些状态码才触发重试（不配则不会因状态码重试）
+    retryable-status-codes: 500,502,503,504
+
+# ==================== 链路追踪：Micrometer Tracing（Sleuth 退役后的官方方案） ====================
+management:
+  tracing:
+    sampling:
+      probability: 1.0 #采样率：1.0 = 全量上报（教学环境；生产按比例降采样）
+  zipkin:
+    tracing:
+      # 上报地址要写到 v2 API 路径（Sleuth 的 spring.zipkin.base-url 只写到主机端口）
+      endpoint: http://localhost:9411/api/v2/spans

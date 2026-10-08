@@ -1,9 +1,52 @@
 # =============================================================================
-# application.yml —— 本地配置（优先级对照实验的「本地一方」）
+# application.yml —— 本地配置 + Nacos 接入（Boot 4 / Spring Cloud Alibaba 2025 的写法）
 #
 # 与 Nacos 远端同名 key 写在两处，是为了让 /nacos/config/priority 端点
 # 把「谁覆盖谁」直接打出来；结论以本机实测为准，不要凭印象。
+#
+# 迁移点（2021.0.5.0 → 2025.1.0.0）：
+#   bootstrap.yml + spring-cloud-starter-bootstrap 的引导方式已废弃，
+#   远端配置改用 Config Data API 显式导入：
+#       spring.config.import: optional:nacos:<dataId>?group=<group>&refreshEnabled=true
+#   —— dataId 不再由 ${spring.application.name}[-profile].${file-extension} 自动推导，
+#      必须写全（这是最容易被忽略的行为变化：不写 import 就「一条远端配置也读不到」）。
 # =============================================================================
+server:
+  port: 8210
+
+spring:
+  application:
+    name: nacos-demo          # 决定默认 dataId 前缀：nacos-demo.properties
+  profiles:
+    active: dev               # profile 专有 dataId 需要自己再写一条 import（见下）
+  config:
+    import:
+      # 应用自己的配置（对应 dataId=nacos-demo.properties）
+      - optional:nacos:nacos-demo.properties?group=DEFAULT_GROUP&refreshEnabled=true
+      # profile 专有配置：2021.x 里是自动拼出来的 nacos-demo-dev.properties，现在要显式写
+      - optional:nacos:nacos-demo-dev.properties?group=DEFAULT_GROUP&refreshEnabled=true
+      # 共享配置：多应用共用同一 dataId（原 shared-configs 的等价写法）
+      - optional:nacos:nacos-demo-shared.properties?group=DEFAULT_GROUP&refreshEnabled=true
+  cloud:
+    nacos:
+      # ---------- 注册中心 ----------
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: ""         # 留空 = public 命名空间；填命名空间 ID 即注册到隔离环境
+        group: DEFAULT_GROUP  # 分组：同一命名空间内的二级隔离，跨组默认不可发现
+        metadata:
+          from: nacos-demo-teaching          # 自定义元数据，会出现在实例列表里
+          # 元数据是「静态」的：多实例要按实例覆盖，见执行命令里的
+          # --spring.cloud.nacos.discovery.metadata.instance-port=8211
+          instance-port: "8210"
+      # ---------- 配置中心 ----------
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: properties   # dataId 后缀；显式 import 时后缀已包含在 dataId 里，此项仅作兼容保留
+        group: DEFAULT_GROUP
+        namespace: ""                # 与注册中心同理；public 用空串表示
+        refresh-enabled: true        # 打开长轮询推送 → 配置变更自动触发 RefreshEvent
+
 nacos:
   demo:
     # 故意与 Nacos 远端同名：远端、本地、命令行三方对照的样本 key

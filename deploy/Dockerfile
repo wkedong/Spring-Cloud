@@ -28,12 +28,18 @@ WORKDIR /workspace
 COPY . .
 
 # 只构建目标模块及其依赖（父 pom），不做 mvn clean，不碰其他模块。
-# 本仓库 java.version=1.8、只用 javax.*，JDK 17 编译通过（实测 Build-Jdk-Spec: 17）。
+# 本仓库升级后 java.version=17、已全面 javax.* → jakarta.*（Boot 4 基线就是 Java 17），
+# 用 JDK 17 编译/运行（实测 MANIFEST 里 Build-Jdk-Spec: 17、Spring-Boot-Version: 4.0.8）。
 RUN mvn -B -pl ${MODULE} -am -DskipTests package
 
 # 分层提取：把 fat jar 拆成 4 个目录，供下一阶段逐个 COPY。
 # ⚠️ 目标目录必须写成「空格分隔」的 --destination <dir>；
 #    写成 --destination=<dir> 会报 Unknown option，而且**退出码仍是 0**，很难发现。
+# ⚠️ Boot 4 起 `-Djarmode=layertools` 会打印弃用提示：
+#    "This command is deprecated. Use '-Djarmode=tools list-layers' instead."
+#    但 layertools 的 list / extract 在 4.0.8 上**功能仍然可用**（本机实测 extract 仍产出下面 4 个分层目录），
+#    所以这里保持不动；换成新命令 -Djarmode=tools extract 会得到**另一种布局**
+#    （一个可执行 jar + lib/ 目录，没有分层目录），COPY 指令要整段重写，不是改个名字的事。
 RUN java -Djarmode=layertools -jar ${MODULE}/target/*.jar extract --destination /workspace/extracted \
  && ls -1 /workspace/extracted
 
@@ -83,5 +89,9 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=60s --retries=5 \
   CMD curl -fsS "http://127.0.0.1:${APP_PORT}/actuator/health" || exit 1
 
 # 用 JarLauncher 从「解压后的分层目录」启动，而不是再打一个 fat jar。
+# ⚠️ 类名随 Boot 3.2 改过包：org.springframework.boot.loader.JarLauncher →
+#    org.springframework.boot.loader.launch.JarLauncher（旧包在 Boot 4 里已删除，
+#    写错的表现是容器一起来就 ClassNotFoundException）。本仓库实测 Boot 4.0.8 的
+#    MANIFEST 里 Main-Class 正是 org.springframework.boot.loader.launch.JarLauncher。
 # "$@" 让 `docker run image --server.port=6070` 这类参数能追加到 java 命令后面。
-ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS org.springframework.boot.loader.JarLauncher \"$@\"", "--"]
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS org.springframework.boot.loader.launch.JarLauncher \"$@\"", "--"]

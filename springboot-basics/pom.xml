@@ -46,7 +46,7 @@
         <!-- AOP：审计切面示例 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-aop</artifactId>
+            <artifactId>spring-boot-starter-aspectj</artifactId>
         </dependency>
         <!-- Actuator：健康检查、指标、动态日志级别、优雅停机观测 -->
         <dependency>

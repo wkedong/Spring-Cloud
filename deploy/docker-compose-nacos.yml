@@ -1,5 +1,5 @@
 # =============================================================================
-# 可选编排：Nacos 单机版 + nacos-demo（对应 docs/24-Nacos注册与配置.md）
+# 可选编排：Nacos 3.x 单机版 + nacos-demo（对应 docs/24-Nacos注册与配置.md）
 #
 # 单独跑：
 #   docker compose -f deploy/docker-compose-nacos.yml up -d
@@ -9,6 +9,18 @@
 # ⚠️ 同 deploy/docker-compose.yml：本机没有 Docker daemon，本文件未实跑，
 #    只用 `docker-compose config` 做过静态校验。未核实之处见 deploy/README.md 第五节。
 #
+# ⚠️ Nacos 3.x 的几处运维变化（本机用 3.2.4 zip 版实测，容器镜像未验证）：
+#    ① 客户端 3.1.1 **必须**配服务端 3.x：3.x 客户端把空命名空间归一化为 "public"，
+#       连 2.x 服务端会出现「订阅成功但配置全空」（日志：[Nacos Config] config[...] is empty）；
+#    ② 控制台从 8848 拆到独立端口 **8080**；v1/v2 配置 API 已移除
+#       （/nacos/v1/cs/configs 直接 404），发布/读取改走 /nacos/v3/admin/cs/config
+#       与 /nacos/v3/client/cs/config；
+#    ③ admin/console 鉴权**默认开启**，且只关 NACOS_AUTH_ENABLE 不够——v3 admin API 仍会
+#       access denied；教学环境要把 nacos.core.auth.admin.enabled 与
+#       nacos.core.auth.console.enabled 一起关掉（可挂载 conf/application.properties 覆盖）。
+#       3.x 还要求显式配置 nacos.core.auth.server.identity.key/value，否则启动报
+#       errCode: 50002, Empty identity；生产环境则必须开鉴权并配好 NACOS_AUTH_TOKEN。
+#
 # ⚠️ 为什么 server-addr 用环境变量、而 instance-port 用命令行参数？
 #    本机用 Spring Boot 的 ConfigurationPropertySources 实测过三种写法（见 docs/29 的实测表）：
 #      spring.cloud.nacos.discovery.server-addr  ← SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR  ✅
@@ -16,7 +28,7 @@
 #      spring.cloud.nacos.discovery.metadata.instance-port
 #                                                ← ..._METADATA_INSTANCE_PORT   ❌ 会变成 instance.port
 #                                                ← ..._METADATA_INSTANCE-PORT   ✅ 但环境变量名里带连字符太别扭
-#    所以配置项本身用环境变量，**Map 里的 key** 用命令行参数（bootstrap.yml 的注释里
+#    所以配置项本身用环境变量，**Map 里的 key** 用命令行参数（application.yml 的注释里
 #    也是用 `--spring.cloud.nacos.discovery.metadata.instance-port=8211` 覆盖的）。
 # =============================================================================
 
@@ -26,18 +38,22 @@ services:
 
   # ---------------------------------------------------------------- Nacos Server
   nacos:
-    image: nacos/nacos-server:v2.2.3
+    image: nacos/nacos-server:v3.2.4    # 3.x：客户端 3.1.1 必须配 3.x 服务端，别再用 2.x 镜像
     container_name: sc-nacos
     environment:
       MODE: standalone            # 单机模式：内嵌 Derby 存配置，不需要额外 MySQL
       TZ: Asia/Shanghai
-      # 教学环境不开鉴权；生产必须打开并配合 NACOS_AUTH_TOKEN / IDENTITY_KEY
+      # 教学环境不开鉴权；注意 3.x 的 admin/console 鉴权默认是开的，只设这一条不足以放行
+      # v3 admin API（详见文件头第 ③ 条：要连 nacos.core.auth.admin.enabled /
+      # console.enabled 一起关）。生产必须打开并配合 NACOS_AUTH_TOKEN / IDENTITY_KEY / VALUE。
       NACOS_AUTH_ENABLE: "false"
       JVM_XMS: 256m
       JVM_XMX: 512m
     ports:
-      - "8848:8848"               # 控制台 + OpenAPI
-      - "9848:9848"               # Nacos 2.x 客户端 gRPC：**必须一起映射**，否则客户端连不上
+      - "8080:8080"               # Nacos 3.x 控制台（已从 8848 拆出来的独立端口；宿主 8080 若被
+                                  # Sentinel Dashboard 占用，改成 "18080:8080" 即可，容器内不用动）
+      - "8848:8848"               # OpenAPI（v1/v2 配置 API 已移除，配置读写走 /nacos/v3/...）
+      - "9848:9848"               # gRPC：客户端 3.x **必须一起映射**，否则连不上
       - "9849:9849"               # gRPC（服务端推送 / 集群间）
     # 不设 healthcheck：官方镜像里可用的 HTTP 客户端不确定，写错会一直显示 unhealthy。
     # Nacos 单机版启动约 10~20 秒，下面的 demo 用 service_started + 应用侧重试来容忍。
@@ -57,11 +73,12 @@ services:
     container_name: sc-nacos-demo
     environment:
       TZ: Asia/Shanghai
-      # bootstrap.yml 里写的是 127.0.0.1:8848，容器里要指到服务名（实测两种写法都能绑定）
+      # application.yml 里写的是 127.0.0.1:8848，容器里要指到服务名（实测两种写法都能绑定）
       SPRING_CLOUD_NACOS_DISCOVERY_SERVER_ADDR: nacos:8848
       SPRING_CLOUD_NACOS_CONFIG_SERVER_ADDR: nacos:8848
-      # 端口 8210 与元数据 instance-port=8210 都写在 bootstrap.yml 里，这里不用覆盖；
-      # Spring profile 还是要从外部传：nacos-demo-dev.properties 这个 dataId 靠它算出来。
+      # 端口 8210 与元数据 instance-port=8210 都写在 application.yml 里，这里不用覆盖；
+      # profile 仍要从外部传（本地默认值按 profile 取），但远端 dataId 不再由 profile 推导——
+      # 三条 dataId 已显式写在 application.yml 的 spring.config.import 里。
       SPRING_PROFILES_ACTIVE: dev
     ports:
       - "8210:8210"

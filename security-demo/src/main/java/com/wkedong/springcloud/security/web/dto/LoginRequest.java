@@ -1,6 +1,6 @@
 package com.wkedong.springcloud.security.web.dto;
 
-import javax.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotBlank;
 
 /**
  * 登录请求体。

@@ -1,9 +1,10 @@
 package com.wkedong.springcloud.security.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.wkedong.springcloud.security.web.ApiResponse;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
@@ -25,7 +26,9 @@ import java.nio.charset.StandardCharsets;
  */
 public final class AuthErrorWriter {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    /** Jackson 3（Boot 4 默认）：包名从 com.fasterxml.jackson 变为 tools.jackson；
+     *  JsonMapper 是不可变构建器风格，线程安全，适合做静态单例 */
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder().build();
 
     private AuthErrorWriter() {
     }

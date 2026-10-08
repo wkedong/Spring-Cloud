@@ -2,11 +2,11 @@ package com.wkedong.springboot.basics.web.dto;
 
 import com.wkedong.springboot.basics.validation.ChineseMobile;
 
-import javax.validation.constraints.Email;
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 /**
  * 创建用户的请求体：参数校验演示。
