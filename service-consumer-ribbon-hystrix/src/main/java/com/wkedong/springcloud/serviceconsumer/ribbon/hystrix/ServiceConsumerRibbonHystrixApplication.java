@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 /**
- * 带熔断机制的消费者（模块保留 ribbon-hystrix 历史名，对应原博客「服务容错保护」一篇）
+ * 带熔断机制的消费者（目录名保留 ribbon-hystrix 历史名，以便与 master 分支对照）
  * <p>
  * 2021.0.x 迁移说明：Hystrix 进入维护态并已从 Spring Cloud 移除，
  * 熔断改由 Spring Cloud CircuitBreaker 抽象 + Resilience4j 实现承担：

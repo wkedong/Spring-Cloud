@@ -1,6 +1,7 @@
 # 04 · 声明式调用 Feign（OpenFeign）
 
-> 模块：`service-consumer-feign/`（7020）。对应旧教程系列同主题（服务消费进阶）。
+> 模块：`service-consumer-feign/`（7020）。
+> 新旧对照：`master` 分支同名目录为旧版实现（手写 CommonsMultipartFile 二次包装）。
 
 ## 学什么
 
